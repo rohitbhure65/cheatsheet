@@ -2605,6 +2605,7 @@ Expert (C++20)
 | **LearnCpp** | learncpp.com | Structured tutorials |
 | **LeetCode** | leetcode.com | STL practice problems |
 | **Codeforces** | codeforces.com | Competitive programming |
+| **DSAANIMATOR** | dsaanimator.com | Animated way of learning DSA
 
 ## 📖 Recommended Books
 
