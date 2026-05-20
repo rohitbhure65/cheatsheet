@@ -1,4 +1,4 @@
-# 🧠 DSA Common Patterns — Complete Handbook
+# 🧠 DSA Common Patterns — Complete Handbook (C++ & STL)
 
 > Master the **patterns**, not just the problems. Once you recognize the pattern, the solution follows naturally.
 
@@ -6,14 +6,11 @@
 
 ## 📌 Why Patterns Matter
 
-DSA problems number in the thousands — but the **underlying patterns** are fewer than 20. Top interviewers at FAANG companies don't expect you to memorize every problem. They expect you to **recognize the pattern** and adapt.
+DSA problems number in the thousands — but the **underlying patterns** are fewer than 20. Top interviewers at FAANG don't expect you to memorize every problem. They expect you to **recognize the pattern** and adapt.
 
-This handbook covers every major DSA pattern with:
-- What it is and when to use it
-- Visual intuition
-- Template code (Python)
-- Classic problems
-- Time & Space complexity
+Each pattern below includes:
+- **Raw C++** — manual implementation (understand internals)
+- **STL C++** — production-ready using `<algorithm>`, `<map>`, `<queue>`, etc.
 
 ---
 
@@ -37,29 +34,26 @@ This handbook covers every major DSA pattern with:
 16. [Trie](#16-trie)
 17. [Union Find (Disjoint Set)](#17-union-find-disjoint-set)
 18. [Bit Manipulation](#18-bit-manipulation)
-19. [Pattern Recognition Cheatsheet](#19-pattern-recognition-cheatsheet)
-20. [Complexity Quick Reference](#20-complexity-quick-reference)
+19. [STL Quick Reference](#19-stl-quick-reference)
+20. [Pattern Recognition Cheatsheet](#20-pattern-recognition-cheatsheet)
+21. [Complexity Quick Reference](#21-complexity-quick-reference)
 
 ---
 
 ## 1. Two Pointers
 
 ### 🔍 What is it?
-
-Use two pointers (indices) that move through the array — usually from opposite ends or in the same direction — to avoid nested loops.
+Two indices that move through the array — usually from opposite ends or same direction — to avoid O(n²) nested loops.
 
 ### ✅ When to Use
-- Array/string is **sorted** (or needs to be)
-- Looking for a **pair** that satisfies a condition
-- Removing duplicates, partitioning
-- Finding closest/smallest/largest pair sum
+- Sorted array pair/triplet problems
+- Remove duplicates, partitioning
+- Container with most water, valid palindrome
 
 ### 🧩 Visual
-
 ```
 arr = [1, 2, 3, 4, 6],  target = 6
 
-left=0  right=4
 [1, 2, 3, 4, 6]
  L           R    → 1+6=7 > 6 → move R left
 
@@ -70,43 +64,73 @@ left=0  right=4
     L     R       → 2+4=6 ✅ FOUND
 ```
 
-### 📝 Template
+### 📝 Raw C++ — Opposite Ends (Pair Sum)
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-def two_pointer(arr, target):
-    left, right = 0, len(arr) - 1
+// Find pair with given target sum in sorted array
+pair<int,int> twoPointer(vector<int>& arr, int target) {
+    int left = 0, right = arr.size() - 1;
 
-    while left < right:
-        current = arr[left] + arr[right]
+    while (left < right) {
+        int sum = arr[left] + arr[right];
 
-        if current == target:
-            return [left, right]        # found
-        elif current < target:
-            left += 1                   # need bigger sum
-        else:
-            right -= 1                  # need smaller sum
+        if (sum == target)
+            return {left, right};       // found
+        else if (sum < target)
+            left++;                     // need bigger sum
+        else
+            right--;                    // need smaller sum
+    }
+    return {-1, -1};                    // not found
+}
 
-    return []
+int main() {
+    vector<int> arr = {1, 2, 3, 4, 6};
+    auto [l, r] = twoPointer(arr, 6);
+    cout << "Indices: " << l << ", " << r << endl; // 1, 3
+}
 ```
 
-### 🎯 Variant: Same Direction (Remove Duplicates)
+### 📝 STL C++ — Same Direction (Remove Duplicates)
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-```python
-def remove_duplicates(arr):
-    if not arr:
-        return 0
+// Remove duplicates from sorted array in-place, return new length
+int removeDuplicates(vector<int>& arr) {
+    if (arr.empty()) return 0;
 
-    slow = 0                            # slow = last unique position
-    for fast in range(1, len(arr)):
-        if arr[fast] != arr[slow]:      # found new unique element
-            slow += 1
-            arr[slow] = arr[fast]
+    // STL approach: unique() moves duplicates to end, returns iterator to new end
+    auto newEnd = unique(arr.begin(), arr.end());
+    arr.erase(newEnd, arr.end());       // optional: actually shrink the vector
+    return arr.size();
+}
 
-    return slow + 1                     # length of unique subarray
+// Manual slow/fast pointer approach
+int removeDuplicatesManual(vector<int>& arr) {
+    int slow = 0;
+    for (int fast = 1; fast < arr.size(); fast++) {
+        if (arr[fast] != arr[slow]) {   // found new unique element
+            slow++;
+            arr[slow] = arr[fast];
+        }
+    }
+    return slow + 1;
+}
+
+int main() {
+    vector<int> arr = {1, 1, 2, 3, 3, 4};
+    int len = removeDuplicates(arr);
+    cout << "New length: " << len << endl;          // 4
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Hint |
 |---------|------|
 | Two Sum II (sorted array) | Opposite ends |
@@ -125,19 +149,16 @@ def remove_duplicates(arr):
 ## 2. Sliding Window
 
 ### 🔍 What is it?
-
-Maintain a **window** (subarray/substring) that slides through the data. Expand or shrink the window based on constraints instead of recomputing from scratch.
+Maintain a window (subarray/substring) that slides through data. Expand or shrink based on constraints — avoids recomputing from scratch.
 
 ### ✅ When to Use
-- Subarray/substring of **fixed or variable size**
+- Subarray/substring of fixed or variable size
 - Keywords: "contiguous", "substring", "subarray"
-- Maximum/minimum/average of a window
 - Longest substring with some constraint
 
 ### 🧩 Visual
-
 ```
-Fixed window (size k=3):
+Fixed window (k=3):
 arr = [2, 1, 5, 1, 3, 2]
 
 [2, 1, 5] → sum=8
@@ -146,145 +167,235 @@ arr = [2, 1, 5, 1, 3, 2]
          [1, 3, 2] → sum=6
 ```
 
-### 📝 Template — Fixed Window
+### 📝 Raw C++ — Fixed Window (Max Sum)
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
 
-```python
-def max_sum_subarray(arr, k):
-    window_sum = sum(arr[:k])           # initial window
-    max_sum = window_sum
+int maxSumSubarray(vector<int>& arr, int k) {
+    int n = arr.size();
+    if (n < k) return -1;
 
-    for i in range(k, len(arr)):
-        window_sum += arr[i]            # add new element
-        window_sum -= arr[i - k]        # remove old element
-        max_sum = max(max_sum, window_sum)
+    // compute first window sum manually
+    int windowSum = 0;
+    for (int i = 0; i < k; i++)
+        windowSum += arr[i];
 
-    return max_sum
+    int maxSum = windowSum;
+
+    for (int i = k; i < n; i++) {
+        windowSum += arr[i];            // add new right element
+        windowSum -= arr[i - k];        // remove old left element
+        maxSum = max(maxSum, windowSum);
+    }
+    return maxSum;
+}
+
+int main() {
+    vector<int> arr = {2, 1, 5, 1, 3, 2};
+    cout << maxSumSubarray(arr, 3) << endl;  // 9
+}
 ```
 
-### 📝 Template — Variable Window
+### 📝 STL C++ — Variable Window (Longest Substring K Distinct)
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+using namespace std;
 
-```python
-def longest_substring_k_distinct(s, k):
-    char_count = {}
-    left = 0
-    max_len = 0
+int longestKDistinct(string& s, int k) {
+    unordered_map<char, int> charCount;  // STL hash map
+    int left = 0, maxLen = 0;
 
-    for right in range(len(s)):
-        # expand: add right character to window
-        char_count[s[right]] = char_count.get(s[right], 0) + 1
+    for (int right = 0; right < s.size(); right++) {
+        charCount[s[right]]++;           // expand: add right char
 
-        # shrink: window violated constraint
-        while len(char_count) > k:
-            char_count[s[left]] -= 1
-            if char_count[s[left]] == 0:
-                del char_count[s[left]]
-            left += 1
+        // shrink: while window has more than k distinct chars
+        while ((int)charCount.size() > k) {
+            charCount[s[left]]--;
+            if (charCount[s[left]] == 0)
+                charCount.erase(s[left]);// remove from map when count hits 0
+            left++;
+        }
 
-        # valid window: update answer
-        max_len = max(max_len, right - left + 1)
+        maxLen = max(maxLen, right - left + 1);  // valid window
+    }
+    return maxLen;
+}
 
-    return max_len
+// STL C++ — Minimum Window Substring
+string minWindow(string s, string t) {
+    unordered_map<char, int> need, have;
+    for (char c : t) need[c]++;
+
+    int left = 0, formed = 0, required = need.size();
+    int minLen = INT_MAX, minLeft = 0;
+
+    for (int right = 0; right < s.size(); right++) {
+        have[s[right]]++;
+        if (need.count(s[right]) && have[s[right]] == need[s[right]])
+            formed++;
+
+        while (formed == required) {
+            if (right - left + 1 < minLen) {
+                minLen = right - left + 1;
+                minLeft = left;
+            }
+            have[s[left]]--;
+            if (need.count(s[left]) && have[s[left]] < need[s[left]])
+                formed--;
+            left++;
+        }
+    }
+    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
+}
+
+int main() {
+    string s = "araaci";
+    cout << longestKDistinct(s, 2) << endl;   // 4 (araa)
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Type |
 |---------|------|
 | Max Sum Subarray of Size K | Fixed |
 | Longest Substring Without Repeating | Variable |
 | Minimum Window Substring | Variable (shrink to minimum) |
-| Longest Subarray with Sum ≤ K | Variable |
 | Find All Anagrams in a String | Fixed |
 | Fruits Into Baskets | Variable (at most 2 distinct) |
 
 ### ⏱️ Complexity
-- **Time:** O(n) — each element enters and leaves window once
-- **Space:** O(k) for the window data structure
+- **Time:** O(n) — each element enters/leaves window once
+- **Space:** O(k)
 
 ---
 
 ## 3. Fast & Slow Pointers (Floyd's Cycle)
 
 ### 🔍 What is it?
-
-Two pointers move at **different speeds** through a linked list or sequence. The fast pointer moves 2 steps, the slow pointer moves 1 step.
+Two pointers move at different speeds. Fast moves 2 steps, slow moves 1 step. Used for cycle detection and finding the middle.
 
 ### ✅ When to Use
-- Detect a **cycle** in a linked list
-- Find the **middle** of a linked list
-- Find the **start of a cycle**
-- Detect happy numbers
+- Detect cycle in linked list
+- Find middle of linked list
+- Find start of cycle
+- Happy number detection
 
 ### 🧩 Visual
-
 ```
-Cycle detection:
-
 1 → 2 → 3 → 4 → 5
             ↑       ↓
             8 ← 7 ← 6
 
 Slow: 1→2→3→4→5→6→7
 Fast: 1→3→5→7→4→6→3
-
-They meet inside the cycle → cycle exists!
+They meet → cycle exists!
 ```
 
-### 📝 Template — Cycle Detection
+### 📝 Raw C++ — Cycle Detection
+```cpp
+#include <iostream>
+using namespace std;
 
-```python
-def has_cycle(head):
-    slow = fast = head
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x) : val(x), next(nullptr) {}
+};
 
-    while fast and fast.next:
-        slow = slow.next            # 1 step
-        fast = fast.next.next       # 2 steps
+bool hasCycle(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
 
-        if slow == fast:
-            return True             # they met → cycle exists
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;              // 1 step
+        fast = fast->next->next;        // 2 steps
 
-    return False
+        if (slow == fast)
+            return true;                // they met → cycle
+    }
+    return false;
+}
+
+// Find middle of linked list
+ListNode* findMiddle(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
+
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+    return slow;                        // slow is at middle
+}
+
+// Find start of cycle
+ListNode* findCycleStart(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
+
+    // Phase 1: detect cycle
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+        if (slow == fast) break;
+    }
+    if (!fast || !fast->next) return nullptr;   // no cycle
+
+    // Phase 2: find entry point
+    slow = head;                        // reset to head
+    while (slow != fast) {
+        slow = slow->next;
+        fast = fast->next;              // both move 1 step
+    }
+    return slow;                        // meeting point = cycle start
+}
 ```
 
-### 📝 Template — Find Middle
+### 📝 STL C++ — Happy Number (Cycle in Number Sequence)
+```cpp
+#include <iostream>
+#include <unordered_set>
+using namespace std;
 
-```python
-def find_middle(head):
-    slow = fast = head
+int digitSquareSum(int n) {
+    int sum = 0;
+    while (n > 0) {
+        int d = n % 10;
+        sum += d * d;
+        n /= 10;
+    }
+    return sum;
+}
 
-    while fast and fast.next:
-        slow = slow.next
-        fast = fast.next.next
+// STL approach: use unordered_set to detect cycle
+bool isHappySTL(int n) {
+    unordered_set<int> seen;
+    while (n != 1 && seen.find(n) == seen.end()) {
+        seen.insert(n);
+        n = digitSquareSum(n);
+    }
+    return n == 1;
+}
 
-    return slow                     # slow is at middle when fast reaches end
-```
+// Fast/slow pointer approach (O(1) space)
+bool isHappy(int n) {
+    int slow = n;
+    int fast = digitSquareSum(n);
 
-### 📝 Template — Start of Cycle
-
-```python
-def find_cycle_start(head):
-    slow = fast = head
-
-    # Phase 1: detect cycle
-    while fast and fast.next:
-        slow = slow.next
-        fast = fast.next.next
-        if slow == fast:
-            break
-    else:
-        return None                 # no cycle
-
-    # Phase 2: find start
-    slow = head                     # reset one pointer to head
-    while slow != fast:
-        slow = slow.next
-        fast = fast.next            # both move 1 step now
-
-    return slow                     # they meet at cycle start
+    while (fast != 1 && slow != fast) {
+        slow = digitSquareSum(slow);
+        fast = digitSquareSum(digitSquareSum(fast));
+    }
+    return fast == 1;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Trick |
 |---------|-------|
 | Linked List Cycle (LC 141) | Fast/slow meet → cycle |
@@ -292,7 +403,6 @@ def find_cycle_start(head):
 | Find Middle of Linked List | Slow is at middle when fast ends |
 | Happy Number | Cycle in number sequence |
 | Palindrome Linked List | Find middle, reverse second half |
-| Reorder List | Find middle, reverse, merge |
 
 ### ⏱️ Complexity
 - **Time:** O(n)
@@ -303,220 +413,359 @@ def find_cycle_start(head):
 ## 4. Binary Search
 
 ### 🔍 What is it?
-
-Eliminate **half the search space** at each step. Works on sorted arrays, but also applies to answer-space problems (binary search on the answer).
+Eliminate half the search space at each step. Works on sorted arrays, also applies to "search on answer" problems.
 
 ### ✅ When to Use
-- Array is **sorted**
-- Looking for a specific value, or first/last occurrence
-- Problem says "find minimum X such that condition holds"
-- Search space can be halved each iteration
+- Array is sorted
+- First/last occurrence of a value
+- "Find minimum X such that condition holds"
+- Monotonic function — answer space can be halved
 
 ### 🧩 Visual
-
 ```
 arr = [1, 3, 5, 7, 9, 11, 13], target = 7
-
 lo=0, hi=6, mid=3 → arr[3]=7 ✅ Found
 ```
 
-### 📝 Template — Classic Binary Search
+### 📝 Raw C++ — Classic Binary Search
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-def binary_search(arr, target):
-    lo, hi = 0, len(arr) - 1
+int binarySearch(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size() - 1;
 
-    while lo <= hi:
-        mid = lo + (hi - lo) // 2      # avoids overflow
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;  // avoids integer overflow
 
-        if arr[mid] == target:
-            return mid
-        elif arr[mid] < target:
-            lo = mid + 1
-        else:
-            hi = mid - 1
+        if (arr[mid] == target)
+            return mid;
+        else if (arr[mid] < target)
+            lo = mid + 1;
+        else
+            hi = mid - 1;
+    }
+    return -1;                          // not found
+}
 
-    return -1                           # not found
+// Find first occurrence (left boundary)
+int findFirst(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size() - 1, result = -1;
+
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (arr[mid] == target) {
+            result = mid;               // record, keep searching left
+            hi = mid - 1;
+        } else if (arr[mid] < target)
+            lo = mid + 1;
+        else
+            hi = mid - 1;
+    }
+    return result;
+}
 ```
 
-### 📝 Template — Find First Occurrence (Left Boundary)
+### 📝 STL C++ — Using `<algorithm>` Built-ins
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-```python
-def find_first(arr, target):
-    lo, hi = 0, len(arr) - 1
-    result = -1
+int main() {
+    vector<int> arr = {1, 3, 5, 7, 9, 11, 13};
 
-    while lo <= hi:
-        mid = lo + (hi - lo) // 2
-        if arr[mid] == target:
-            result = mid                # record, but keep searching left
-            hi = mid - 1
-        elif arr[mid] < target:
-            lo = mid + 1
-        else:
-            hi = mid - 1
+    // binary_search: returns true/false only
+    bool found = binary_search(arr.begin(), arr.end(), 7);
 
-    return result
+    // lower_bound: iterator to first element >= target
+    auto it = lower_bound(arr.begin(), arr.end(), 7);
+    int idx = it - arr.begin();         // convert to index
+
+    // upper_bound: iterator to first element > target
+    auto it2 = upper_bound(arr.begin(), arr.end(), 7);
+
+    // Count occurrences of target
+    int count = upper_bound(arr.begin(), arr.end(), 7)
+              - lower_bound(arr.begin(), arr.end(), 7);
+
+    cout << "Found: " << found << endl;
+    cout << "First index: " << idx << endl;
+    cout << "Count: " << count << endl;
+}
 ```
 
-### 📝 Template — Binary Search on Answer
+### 📝 Binary Search on Answer Template
+```cpp
+#include <iostream>
+#include <vector>
+#include <numeric>
+using namespace std;
 
-```python
-# "Find minimum speed such that all packages arrive in D days"
-def min_capacity(weights, D):
-    def can_ship(capacity):
-        days, current = 1, 0
-        for w in weights:
-            if current + w > capacity:
-                days += 1
-                current = 0
-            current += w
-        return days <= D
+// "Find minimum capacity to ship packages within D days"
+bool canShip(vector<int>& weights, int D, int capacity) {
+    int days = 1, current = 0;
+    for (int w : weights) {
+        if (current + w > capacity) {
+            days++;
+            current = 0;
+        }
+        current += w;
+    }
+    return days <= D;
+}
 
-    lo, hi = max(weights), sum(weights)
+int minCapacity(vector<int>& weights, int D) {
+    int lo = *max_element(weights.begin(), weights.end()); // STL max_element
+    int hi = accumulate(weights.begin(), weights.end(), 0);// STL accumulate
 
-    while lo < hi:
-        mid = lo + (hi - lo) // 2
-        if can_ship(mid):
-            hi = mid                    # might do better
-        else:
-            lo = mid + 1                # too small, increase
-
-    return lo
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canShip(weights, D, mid))
+            hi = mid;                   // might do better
+        else
+            lo = mid + 1;               // too small
+    }
+    return lo;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Variant |
 |---------|---------|
 | Binary Search (LC 704) | Classic |
-| Search in Rotated Sorted Array | Modified — check which half is sorted |
+| Search in Rotated Sorted Array | Check which half is sorted |
 | Find Minimum in Rotated Array | Modified |
 | Koko Eating Bananas | Search on answer |
 | Capacity to Ship Packages | Search on answer |
-| Median of Two Sorted Arrays | Advanced |
 | Search a 2D Matrix | Treat as 1D array |
 
 ### ⏱️ Complexity
 - **Time:** O(log n)
-- **Space:** O(1) iterative, O(log n) recursive
+- **Space:** O(1) iterative
 
 ---
 
 ## 5. Prefix Sum
 
 ### 🔍 What is it?
+Precompute cumulative sums so any subarray sum is answered in O(1).
 
-Precompute cumulative sums so any **subarray sum** can be answered in O(1).
-
-`prefix[i] = arr[0] + arr[1] + ... + arr[i]`
-`sum(l, r) = prefix[r] - prefix[l-1]`
+`prefix[i] = arr[0] + arr[1] + ... + arr[i-1]`
+`sum(l, r) = prefix[r+1] - prefix[l]`
 
 ### ✅ When to Use
-- Multiple queries on subarray sums
+- Multiple subarray sum queries
 - Subarray sum equals K
-- Count of subarrays with a property
+- Product of array except self
 - 2D range sum queries
 
-### 📝 Template
+### 📝 Raw C++ — Build & Query
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-def build_prefix(arr):
-    prefix = [0] * (len(arr) + 1)
-    for i, val in enumerate(arr):
-        prefix[i + 1] = prefix[i] + val
-    return prefix
+vector<int> buildPrefix(vector<int>& arr) {
+    int n = arr.size();
+    vector<int> prefix(n + 1, 0);
 
-def range_sum(prefix, l, r):
-    # sum of arr[l..r] (0-indexed)
-    return prefix[r + 1] - prefix[l]
+    for (int i = 0; i < n; i++)
+        prefix[i + 1] = prefix[i] + arr[i];
+
+    return prefix;
+}
+
+int rangeSum(vector<int>& prefix, int l, int r) {
+    // sum of arr[l..r] (0-indexed, inclusive)
+    return prefix[r + 1] - prefix[l];
+}
+
+int main() {
+    vector<int> arr = {1, 2, 3, 4, 5};
+    auto prefix = buildPrefix(arr);
+    cout << rangeSum(prefix, 1, 3) << endl;  // 2+3+4 = 9
+}
 ```
 
-### 📝 Subarray Sum Equals K (HashMap + Prefix)
+### 📝 STL C++ — Subarray Sum Equals K
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+using namespace std;
 
-```python
-def subarray_sum(arr, k):
-    count = 0
-    prefix = 0
-    seen = {0: 1}                       # prefix sum → frequency
+int subarraySum(vector<int>& nums, int k) {
+    unordered_map<int, int> seen;       // prefix sum → frequency
+    seen[0] = 1;                        // empty prefix
+    int count = 0, prefix = 0;
 
-    for num in arr:
-        prefix += num
-        # if (prefix - k) was seen before, those subarrays sum to k
-        count += seen.get(prefix - k, 0)
-        seen[prefix] = seen.get(prefix, 0) + 1
+    for (int num : nums) {
+        prefix += num;
+        // if (prefix - k) was seen before, those subarrays sum to k
+        count += seen[prefix - k];      // unordered_map returns 0 if key missing
+        seen[prefix]++;
+    }
+    return count;
+}
 
-    return count
+// Product of Array Except Self (prefix + suffix product)
+vector<int> productExceptSelf(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> result(n, 1);
+
+    // left pass: result[i] = product of all elements left of i
+    int left = 1;
+    for (int i = 0; i < n; i++) {
+        result[i] = left;
+        left *= nums[i];
+    }
+
+    // right pass: multiply by product of all elements right of i
+    int right = 1;
+    for (int i = n - 1; i >= 0; i--) {
+        result[i] *= right;
+        right *= nums[i];
+    }
+    return result;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Key Idea |
 |---------|----------|
-| Subarray Sum Equals K | prefix + hashmap |
+| Subarray Sum Equals K | prefix + unordered_map |
 | Range Sum Query | precompute prefix |
-| Product of Array Except Self | prefix product + suffix product |
-| Count of Nice Subarrays | prefix parity |
+| Product of Array Except Self | prefix + suffix product |
 | 2D Matrix Range Sum | 2D prefix |
 
 ### ⏱️ Complexity
-- **Build:** O(n)
-- **Query:** O(1)
+- **Build:** O(n) | **Query:** O(1)
 
 ---
 
 ## 6. HashMap / Frequency Count
 
 ### 🔍 What is it?
-
-Use a dictionary to **count occurrences**, **store indices**, or **group elements** — turning O(n²) lookups into O(1).
+Use `unordered_map` (hash map) or `map` to count occurrences, store indices, or group elements — turning O(n²) lookups into O(1).
 
 ### ✅ When to Use
 - Count frequency of elements
 - Two Sum: find complement
 - Anagram detection
 - Group elements by property
-- First unique / most frequent element
 
-### 📝 Templates
+### 📝 Raw C++ — Manual Hash (Array for ASCII)
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
 
-```python
-# Frequency count
-from collections import Counter
-freq = Counter(arr)                     # {element: count}
+// Valid Anagram using fixed-size frequency array (only lowercase letters)
+bool isAnagram(string s, string t) {
+    if (s.size() != t.size()) return false;
 
-# Two Sum — find indices of pair summing to target
-def two_sum(nums, target):
-    seen = {}                           # value → index
-    for i, num in enumerate(nums):
-        complement = target - num
-        if complement in seen:
-            return [seen[complement], i]
-        seen[num] = i
-    return []
+    int freq[26] = {0};                 // array as hash map for a-z
 
-# Group anagrams
-def group_anagrams(strs):
-    groups = {}
-    for s in strs:
-        key = tuple(sorted(s))          # sorted letters as key
-        groups.setdefault(key, []).append(s)
-    return list(groups.values())
+    for (char c : s) freq[c - 'a']++;
+    for (char c : t) freq[c - 'a']--;
+
+    for (int i = 0; i < 26; i++)
+        if (freq[i] != 0) return false;
+
+    return true;
+}
+```
+
+### 📝 STL C++ — unordered_map Templates
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+// Two Sum — find indices of pair summing to target
+vector<int> twoSum(vector<int>& nums, int target) {
+    unordered_map<int, int> seen;       // value → index
+
+    for (int i = 0; i < nums.size(); i++) {
+        int complement = target - nums[i];
+        if (seen.count(complement))
+            return {seen[complement], i};
+        seen[nums[i]] = i;
+    }
+    return {};
+}
+
+// Group Anagrams
+vector<vector<string>> groupAnagrams(vector<string>& strs) {
+    unordered_map<string, vector<string>> groups;
+
+    for (string& s : strs) {
+        string key = s;
+        sort(key.begin(), key.end());   // sorted string as key
+        groups[key].push_back(s);
+    }
+
+    vector<vector<string>> result;
+    for (auto& [key, group] : groups)
+        result.push_back(group);
+
+    return result;
+}
+
+// Longest Consecutive Sequence — O(n) with unordered_set
+#include <unordered_set>
+int longestConsecutive(vector<int>& nums) {
+    unordered_set<int> numSet(nums.begin(), nums.end());
+    int maxLen = 0;
+
+    for (int num : numSet) {
+        // only start counting from the beginning of a sequence
+        if (!numSet.count(num - 1)) {
+            int current = num, len = 1;
+            while (numSet.count(current + 1)) {
+                current++;
+                len++;
+            }
+            maxLen = max(maxLen, len);
+        }
+    }
+    return maxLen;
+}
+```
+
+### 📝 STL Map vs Unordered_map
+```cpp
+#include <map>
+#include <unordered_map>
+
+// map: sorted keys, O(log n) operations — use when order matters
+map<int, int> ordered;
+
+// unordered_map: O(1) avg operations — use for frequency/lookup
+unordered_map<int, int> fast;
+
+// Frequency count idiom
+unordered_map<int, int> freq;
+for (int x : nums) freq[x]++;          // auto-initializes to 0
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Technique |
 |---------|-----------|
-| Two Sum | complement hashmap |
-| Valid Anagram | frequency comparison |
+| Two Sum | complement unordered_map |
+| Valid Anagram | frequency array or map |
 | Group Anagrams | sorted string as key |
-| Top K Frequent Elements | counter + heap |
-| Longest Consecutive Sequence | set for O(1) lookup |
-| Ransom Note | frequency subtraction |
+| Top K Frequent Elements | map + priority_queue |
+| Longest Consecutive Sequence | unordered_set |
 
 ### ⏱️ Complexity
-- **Time:** O(n)
+- **Time:** O(n) avg (unordered_map), O(n log n) (map)
 - **Space:** O(n)
 
 ---
@@ -524,68 +773,112 @@ def group_anagrams(strs):
 ## 7. Monotonic Stack
 
 ### 🔍 What is it?
-
-A stack that is always maintained in **strictly increasing or decreasing order**. Efficiently answers "next greater/smaller element" queries.
+A stack maintained in strictly increasing or decreasing order. Efficiently answers "next greater/smaller element" queries in O(n).
 
 ### ✅ When to Use
 - Next Greater Element / Previous Smaller Element
 - Largest rectangle in histogram
 - Daily Temperatures
-- Stock Span problem
 - Trapping Rain Water
 
 ### 🧩 Visual
-
 ```
 arr = [2, 1, 5, 3, 6]  — find Next Greater Element
 
 Process 2: stack = [2]
 Process 1: stack = [2, 1]
-Process 5: 5 > 1 → NGE(1)=5, 5 > 2 → NGE(2)=5. stack = [5]
+Process 5: 5>1 → NGE(1)=5, 5>2 → NGE(2)=5. stack=[5]
 Process 3: stack = [5, 3]
-Process 6: 6 > 3 → NGE(3)=6, 6 > 5 → NGE(5)=6. stack = [6]
+Process 6: 6>3 → NGE(3)=6, 6>5 → NGE(5)=6. stack=[6]
 
-NGE = [5, 5, 6, 6, -1]
+Result = [5, 5, 6, 6, -1]
 ```
 
-### 📝 Template — Next Greater Element
+### 📝 Raw C++ — Next Greater Element (Manual Stack Array)
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-def next_greater(arr):
-    n = len(arr)
-    result = [-1] * n
-    stack = []                          # stores indices (monotonic decreasing values)
+vector<int> nextGreater(vector<int>& arr) {
+    int n = arr.size();
+    vector<int> result(n, -1);
 
-    for i in range(n):
-        # pop all elements smaller than current — current is their NGE
-        while stack and arr[stack[-1]] < arr[i]:
-            idx = stack.pop()
-            result[idx] = arr[i]
-        stack.append(i)
+    // manual stack using array
+    int stk[100000];
+    int top = -1;
 
-    return result
+    for (int i = 0; i < n; i++) {
+        // pop all elements smaller than current
+        while (top >= 0 && arr[stk[top]] < arr[i]) {
+            result[stk[top]] = arr[i];
+            top--;
+        }
+        stk[++top] = i;                 // push current index
+    }
+    return result;
+}
 ```
 
-### 📝 Template — Largest Rectangle in Histogram
+### 📝 STL C++ — Using `stack<int>`
+```cpp
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
 
-```python
-def largest_rectangle(heights):
-    stack = []                          # monotonic increasing
-    max_area = 0
-    heights.append(0)                   # sentinel to flush stack
+// Next Greater Element
+vector<int> nextGreaterSTL(vector<int>& arr) {
+    int n = arr.size();
+    vector<int> result(n, -1);
+    stack<int> stk;                     // STL stack, stores indices
 
-    for i, h in enumerate(heights):
-        while stack and heights[stack[-1]] > h:
-            height = heights[stack.pop()]
-            width = i if not stack else i - stack[-1] - 1
-            max_area = max(max_area, height * width)
-        stack.append(i)
+    for (int i = 0; i < n; i++) {
+        while (!stk.empty() && arr[stk.top()] < arr[i]) {
+            result[stk.top()] = arr[i];
+            stk.pop();
+        }
+        stk.push(i);
+    }
+    return result;
+}
 
-    return max_area
+// Largest Rectangle in Histogram
+int largestRectangle(vector<int>& heights) {
+    heights.push_back(0);               // sentinel to flush remaining stack
+    stack<int> stk;
+    int maxArea = 0;
+
+    for (int i = 0; i < heights.size(); i++) {
+        while (!stk.empty() && heights[stk.top()] > heights[i]) {
+            int height = heights[stk.top()]; stk.pop();
+            int width  = stk.empty() ? i : i - stk.top() - 1;
+            maxArea = max(maxArea, height * width);
+        }
+        stk.push(i);
+    }
+    heights.pop_back();                 // restore original
+    return maxArea;
+}
+
+// Daily Temperatures — days to wait for warmer temperature
+vector<int> dailyTemperatures(vector<int>& T) {
+    int n = T.size();
+    vector<int> result(n, 0);
+    stack<int> stk;                     // decreasing monotonic stack
+
+    for (int i = 0; i < n; i++) {
+        while (!stk.empty() && T[stk.top()] < T[i]) {
+            result[stk.top()] = i - stk.top();
+            stk.pop();
+        }
+        stk.push(i);
+    }
+    return result;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Stack Type |
 |---------|------------|
 | Next Greater Element I & II | Decreasing |
@@ -593,7 +886,6 @@ def largest_rectangle(heights):
 | Largest Rectangle in Histogram | Increasing |
 | Trapping Rain Water | Decreasing |
 | 132 Pattern | Decreasing |
-| Stock Span Problem | Decreasing |
 
 ### ⏱️ Complexity
 - **Time:** O(n) — each element pushed/popped once
@@ -604,195 +896,266 @@ def largest_rectangle(heights):
 ## 8. BFS — Level Order Traversal
 
 ### 🔍 What is it?
-
-Explore all nodes at the **current level** before moving to the next. Uses a **queue**. Guarantees shortest path in unweighted graphs.
+Explore all nodes at the current level before moving to the next. Uses a queue. Guarantees shortest path in unweighted graphs.
 
 ### ✅ When to Use
-- Shortest path in an **unweighted** graph or grid
+- Shortest path in unweighted graph or grid
 - Level-by-level tree processing
-- Multi-source BFS (start from multiple points)
-- Word ladder, rotten oranges
+- Multi-source BFS (rotten oranges, walls & gates)
+- Word ladder
 
-### 📝 Template — Tree BFS
+### 📝 Raw C++ — Tree BFS (Manual Queue with Array)
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-from collections import deque
+struct TreeNode {
+    int val;
+    TreeNode *left, *right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 
-def level_order(root):
-    if not root:
-        return []
+vector<vector<int>> levelOrderRaw(TreeNode* root) {
+    vector<vector<int>> result;
+    if (!root) return result;
 
-    result = []
-    queue = deque([root])
+    // manual queue using array
+    TreeNode* q[10000];
+    int front = 0, back = 0;
+    q[back++] = root;
 
-    while queue:
-        level_size = len(queue)         # number of nodes at current level
-        level = []
+    while (front < back) {
+        int levelSize = back - front;
+        vector<int> level;
 
-        for _ in range(level_size):
-            node = queue.popleft()
-            level.append(node.val)
-            if node.left:  queue.append(node.left)
-            if node.right: queue.append(node.right)
-
-        result.append(level)
-
-    return result
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode* node = q[front++];
+            level.push_back(node->val);
+            if (node->left)  q[back++] = node->left;
+            if (node->right) q[back++] = node->right;
+        }
+        result.push_back(level);
+    }
+    return result;
+}
 ```
 
-### 📝 Template — Graph BFS (Shortest Path)
+### 📝 STL C++ — Using `queue<>`
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <unordered_set>
+using namespace std;
 
-```python
-def bfs_shortest_path(graph, start, end):
-    visited = {start}
-    queue = deque([(start, 0)])         # (node, distance)
+// Tree BFS
+vector<vector<int>> levelOrder(TreeNode* root) {
+    vector<vector<int>> result;
+    if (!root) return result;
 
-    while queue:
-        node, dist = queue.popleft()
+    queue<TreeNode*> q;                 // STL queue
+    q.push(root);
 
-        if node == end:
-            return dist
+    while (!q.empty()) {
+        int levelSize = q.size();
+        vector<int> level;
 
-        for neighbor in graph[node]:
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, dist + 1))
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode* node = q.front(); q.pop();
+            level.push_back(node->val);
+            if (node->left)  q.push(node->left);
+            if (node->right) q.push(node->right);
+        }
+        result.push_back(level);
+    }
+    return result;
+}
 
-    return -1                           # unreachable
-```
+// Graph BFS — Shortest Path
+int bfsShortestPath(vector<vector<int>>& adj, int start, int end) {
+    int n = adj.size();
+    vector<bool> visited(n, false);
+    queue<pair<int,int>> q;             // {node, distance}
 
-### 📝 Template — Grid BFS
+    visited[start] = true;
+    q.push({start, 0});
 
-```python
-def bfs_grid(grid, start_r, start_c):
-    rows, cols = len(grid), len(grid[0])
-    directions = [(0,1),(0,-1),(1,0),(-1,0)]
-    visited = {(start_r, start_c)}
-    queue = deque([(start_r, start_c, 0)])  # (row, col, distance)
+    while (!q.empty()) {
+        auto [node, dist] = q.front(); q.pop();
 
-    while queue:
-        r, c, dist = queue.popleft()
+        if (node == end) return dist;
 
-        for dr, dc in directions:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and (nr,nc) not in visited:
-                if grid[nr][nc] != '#':     # not a wall
-                    visited.add((nr, nc))
-                    queue.append((nr, nc, dist + 1))
+        for (int neighbor : adj[node]) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                q.push({neighbor, dist + 1});
+            }
+        }
+    }
+    return -1;
+}
+
+// Grid BFS — Multi-source (Rotten Oranges)
+int orangesRotting(vector<vector<int>>& grid) {
+    int rows = grid.size(), cols = grid[0].size();
+    queue<pair<int,int>> q;
+    int fresh = 0;
+
+    // add all rotten oranges as sources
+    for (int r = 0; r < rows; r++)
+        for (int c = 0; c < cols; c++) {
+            if (grid[r][c] == 2) q.push({r, c});
+            if (grid[r][c] == 1) fresh++;
+        }
+
+    int minutes = 0;
+    int dirs[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
+
+    while (!q.empty() && fresh > 0) {
+        int sz = q.size();
+        for (int i = 0; i < sz; i++) {
+            auto [r, c] = q.front(); q.pop();
+            for (auto& d : dirs) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr>=0 && nr<rows && nc>=0 && nc<cols && grid[nr][nc]==1) {
+                    grid[nr][nc] = 2;
+                    fresh--;
+                    q.push({nr, nc});
+                }
+            }
+        }
+        minutes++;
+    }
+    return fresh == 0 ? minutes : -1;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Variant |
 |---------|---------|
 | Binary Tree Level Order | Tree BFS |
 | Rotting Oranges | Multi-source BFS |
 | Word Ladder | Graph BFS |
 | 01 Matrix | Multi-source BFS |
-| Walls and Gates | Multi-source BFS |
 | Shortest Path in Binary Matrix | Grid BFS |
 
 ### ⏱️ Complexity
 - **Time:** O(V + E) for graphs, O(m×n) for grids
-- **Space:** O(V) for the queue
+- **Space:** O(V)
 
 ---
 
 ## 9. DFS — Tree & Graph
 
 ### 🔍 What is it?
-
-Explore as **deep as possible** along each branch before backtracking. Uses recursion (implicit stack) or explicit stack.
+Explore as deep as possible along each branch before backtracking. Uses recursion (implicit stack) or explicit stack.
 
 ### ✅ When to Use
 - Tree: path sums, heights, diameter, LCA
 - Graph: connected components, cycle detection, topological sort
 - Flood fill, number of islands
-- When you need to explore all possibilities
 
-### 📝 Template — Tree DFS
+### 📝 Raw C++ — Tree DFS (Recursion)
+```cpp
+#include <iostream>
+using namespace std;
 
-```python
-def max_depth(root):
-    if not root:
-        return 0
-    return 1 + max(max_depth(root.left), max_depth(root.right))
+struct TreeNode {
+    int val;
+    TreeNode *left, *right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 
-def has_path_sum(root, target):
-    if not root:
-        return False
-    if not root.left and not root.right:    # leaf node
-        return root.val == target
-    return (has_path_sum(root.left, target - root.val) or
-            has_path_sum(root.right, target - root.val))
+// Max depth
+int maxDepth(TreeNode* root) {
+    if (!root) return 0;
+    int leftDepth  = maxDepth(root->left);
+    int rightDepth = maxDepth(root->right);
+    return 1 + max(leftDepth, rightDepth);
+}
+
+// Path sum: does a root-to-leaf path sum equal target?
+bool hasPathSum(TreeNode* root, int target) {
+    if (!root) return false;
+    if (!root->left && !root->right)   // leaf node
+        return root->val == target;
+    return hasPathSum(root->left,  target - root->val) ||
+           hasPathSum(root->right, target - root->val);
+}
+
+// Diameter of binary tree
+int diameter = 0;
+int dfsDepth(TreeNode* node) {
+    if (!node) return 0;
+    int left  = dfsDepth(node->left);
+    int right = dfsDepth(node->right);
+    diameter = max(diameter, left + right); // update at each node
+    return 1 + max(left, right);
+}
 ```
 
-### 📝 Template — Graph DFS (Number of Islands)
+### 📝 STL C++ — Graph DFS (Number of Islands)
+```cpp
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
 
-```python
-def num_islands(grid):
-    if not grid:
-        return 0
+void dfs(vector<vector<char>>& grid, int r, int c) {
+    int rows = grid.size(), cols = grid[0].size();
+    if (r<0 || r>=rows || c<0 || c>=cols || grid[r][c]=='0') return;
+    grid[r][c] = '0';                  // mark visited
+    dfs(grid, r+1, c); dfs(grid, r-1, c);
+    dfs(grid, r, c+1); dfs(grid, r, c-1);
+}
 
-    rows, cols = len(grid), len(grid[0])
-    count = 0
+int numIslands(vector<vector<char>>& grid) {
+    int count = 0;
+    for (int r = 0; r < grid.size(); r++)
+        for (int c = 0; c < grid[0].size(); c++)
+            if (grid[r][c] == '1') {
+                dfs(grid, r, c);
+                count++;
+            }
+    return count;
+}
 
-    def dfs(r, c):
-        if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] == '0':
-            return
-        grid[r][c] = '0'               # mark visited (sink the island)
-        dfs(r+1, c); dfs(r-1, c)
-        dfs(r, c+1); dfs(r, c-1)
+// Topological Sort (Kahn's BFS approach using STL)
+#include <queue>
+vector<int> topoSort(int n, vector<pair<int,int>>& edges) {
+    vector<vector<int>> adj(n);
+    vector<int> indegree(n, 0);
 
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == '1':
-                dfs(r, c)
-                count += 1
+    for (auto [u, v] : edges) {
+        adj[u].push_back(v);
+        indegree[v]++;
+    }
 
-    return count
-```
+    queue<int> q;
+    for (int i = 0; i < n; i++)
+        if (indegree[i] == 0) q.push(i);
 
-### 📝 Template — Topological Sort (DFS)
-
-```python
-def topo_sort(n, edges):
-    graph = [[] for _ in range(n)]
-    for u, v in edges:
-        graph[u].append(v)
-
-    visited = [0] * n                  # 0=unvisited, 1=visiting, 2=done
-    result = []
-    has_cycle = [False]
-
-    def dfs(node):
-        if visited[node] == 1:          # back edge → cycle
-            has_cycle[0] = True; return
-        if visited[node] == 2:
-            return
-
-        visited[node] = 1
-        for neighbor in graph[node]:
-            dfs(neighbor)
-        visited[node] = 2
-        result.append(node)
-
-    for i in range(n):
-        if visited[i] == 0:
-            dfs(i)
-
-    return [] if has_cycle[0] else result[::-1]
+    vector<int> order;
+    while (!q.empty()) {
+        int node = q.front(); q.pop();
+        order.push_back(node);
+        for (int neighbor : adj[node]) {
+            if (--indegree[neighbor] == 0)
+                q.push(neighbor);
+        }
+    }
+    return order.size() == n ? order : vector<int>{}; // empty if cycle
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Technique |
 |---------|-----------|
 | Maximum Depth of Binary Tree | Tree DFS |
 | Path Sum I & II | Tree DFS with target |
 | Number of Islands | Grid DFS |
-| Clone Graph | DFS with hashmap |
-| Course Schedule | DFS cycle detection |
+| Course Schedule | Topological Sort / Cycle Detection |
 | Binary Tree Diameter | DFS, track max at each node |
 | Lowest Common Ancestor | DFS |
 
@@ -805,93 +1168,117 @@ def topo_sort(n, edges):
 ## 10. Backtracking
 
 ### 🔍 What is it?
-
-Build a solution incrementally — at each step, **try** each option, and **undo** (backtrack) if it leads to an invalid state. Explores all possibilities systematically.
+Build solution incrementally — try each option, and undo (backtrack) if it leads to invalid state. The blueprint: **choose → explore → unchoose**.
 
 ### ✅ When to Use
-- Generate all permutations, combinations, subsets
-- Solve constraint satisfaction (N-Queens, Sudoku)
+- All permutations, combinations, subsets
+- N-Queens, Sudoku
 - Word search on a grid
-- Anytime you need to "try all valid paths"
 
-### 🧩 The Backtracking Blueprint
+### 📝 Raw C++ — Subsets
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```
-choose → explore → unchoose
-```
+void backtrack(vector<int>& nums, int start,
+               vector<int>& current, vector<vector<int>>& result) {
+    result.push_back(current);         // add current subset (including empty)
 
-### 📝 Template — Subsets
+    for (int i = start; i < nums.size(); i++) {
+        current.push_back(nums[i]);    // choose
+        backtrack(nums, i + 1, current, result);  // explore
+        current.pop_back();            // unchoose (backtrack)
+    }
+}
 
-```python
-def subsets(nums):
-    result = []
-
-    def backtrack(start, current):
-        result.append(current[:])      # add current subset
-
-        for i in range(start, len(nums)):
-            current.append(nums[i])    # choose
-            backtrack(i + 1, current)  # explore
-            current.pop()              # unchoose (backtrack)
-
-    backtrack(0, [])
-    return result
-```
-
-### 📝 Template — Permutations
-
-```python
-def permutations(nums):
-    result = []
-
-    def backtrack(current):
-        if len(current) == len(nums):
-            result.append(current[:])
-            return
-
-        for num in nums:
-            if num not in current:         # skip used
-                current.append(num)        # choose
-                backtrack(current)         # explore
-                current.pop()              # unchoose
-
-    backtrack([])
-    return result
+vector<vector<int>> subsets(vector<int>& nums) {
+    vector<vector<int>> result;
+    vector<int> current;
+    backtrack(nums, 0, current, result);
+    return result;
+}
 ```
 
-### 📝 Template — N-Queens
+### 📝 STL C++ — Permutations & N-Queens
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+#include <set>
+using namespace std;
 
-```python
-def solve_n_queens(n):
-    result = []
-    cols = set()
-    diag1 = set()                      # row - col
-    diag2 = set()                      # row + col
+// Permutations
+void permuteHelper(vector<int>& nums, vector<bool>& used,
+                   vector<int>& current, vector<vector<int>>& result) {
+    if (current.size() == nums.size()) {
+        result.push_back(current);
+        return;
+    }
+    for (int i = 0; i < nums.size(); i++) {
+        if (used[i]) continue;
+        used[i] = true;
+        current.push_back(nums[i]);    // choose
+        permuteHelper(nums, used, current, result); // explore
+        current.pop_back();            // unchoose
+        used[i] = false;
+    }
+}
 
-    def backtrack(row, board):
-        if row == n:
-            result.append(["".join(r) for r in board])
-            return
+vector<vector<int>> permute(vector<int>& nums) {
+    vector<vector<int>> result;
+    vector<bool> used(nums.size(), false);
+    vector<int> current;
+    permuteHelper(nums, used, current, result);
+    return result;
+}
 
-        for col in range(n):
-            if col in cols or (row-col) in diag1 or (row+col) in diag2:
-                continue                # invalid position
+// STL: next_permutation for all permutations
+#include <algorithm>
+vector<vector<int>> permuteSTL(vector<int>& nums) {
+    sort(nums.begin(), nums.end());
+    vector<vector<int>> result;
+    do {
+        result.push_back(nums);
+    } while (next_permutation(nums.begin(), nums.end()));
+    return result;
+}
 
-            cols.add(col); diag1.add(row-col); diag2.add(row+col)
-            board[row][col] = 'Q'
+// N-Queens
+vector<vector<string>> solveNQueens(int n) {
+    vector<vector<string>> result;
+    vector<string> board(n, string(n, '.'));
+    set<int> cols, diag1, diag2;       // STL sets for O(1) check
 
-            backtrack(row + 1, board)  # explore
+    function<void(int)> backtrack = [&](int row) {
+        if (row == n) {
+            result.push_back(board);
+            return;
+        }
+        for (int col = 0; col < n; col++) {
+            if (cols.count(col) || diag1.count(row-col) || diag2.count(row+col))
+                continue;
 
-            cols.remove(col); diag1.remove(row-col); diag2.remove(row+col)
-            board[row][col] = '.'      # backtrack
+            cols.insert(col);
+            diag1.insert(row - col);
+            diag2.insert(row + col);
+            board[row][col] = 'Q';
 
-    board = [['.']*n for _ in range(n)]
-    backtrack(0, board)
-    return result
+            backtrack(row + 1);
+
+            cols.erase(col);
+            diag1.erase(row - col);
+            diag2.erase(row + col);
+            board[row][col] = '.';
+        }
+    };
+
+    backtrack(0);
+    return result;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Key Decision |
 |---------|-------------|
 | Subsets / Subsets II | include or skip |
@@ -900,10 +1287,9 @@ def solve_n_queens(n):
 | Word Search | mark visited, unmark on backtrack |
 | N-Queens | valid column/diagonal check |
 | Sudoku Solver | valid number per cell |
-| Palindrome Partitioning | partition at valid positions |
 
 ### ⏱️ Complexity
-- **Time:** O(2ⁿ) for subsets, O(n!) for permutations
+- **Time:** O(2ⁿ) subsets, O(n!) permutations
 - **Space:** O(n) recursion depth
 
 ---
@@ -911,167 +1297,233 @@ def solve_n_queens(n):
 ## 11. Dynamic Programming
 
 ### 🔍 What is it?
-
-Break the problem into **overlapping subproblems**, solve each once, and **store results** (memoization/tabulation) to avoid recomputation.
+Break problem into overlapping subproblems, solve each once, store results (memoization/tabulation).
 
 ### ✅ When to Use
-- Problem asks for **count**, **minimum**, **maximum**, or **whether possible**
+- Count, minimum, maximum, or feasibility
+- Keywords: "number of ways", "min cost", "longest", "can you reach"
 - Overlapping subproblems + optimal substructure
-- Keywords: "number of ways", "minimum cost", "can you reach", "longest"
 
-### 🧩 DP Decision Framework
-
+### 🧩 DP Framework
 ```
-1. Is the problem asking for optimal/count over choices?
-2. Can you define the state? (what changes at each step)
-3. Can the larger problem be solved from smaller subproblems?
-→ If yes to all three → try DP
+1. Define state: what does dp[i] or dp[i][j] represent?
+2. Base case: smallest valid inputs
+3. Recurrence: how does dp[i] depend on smaller states?
+4. Answer: which dp entry is the final answer?
 ```
 
-### 📝 Template — 1D DP (Climbing Stairs)
+### 📝 Raw C++ — 1D DP (Climbing Stairs)
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-# How many ways to climb n stairs (1 or 2 steps at a time)?
-def climb_stairs(n):
-    if n <= 2:
-        return n
+// How many ways to climb n stairs (1 or 2 steps)
+int climbStairs(int n) {
+    if (n <= 2) return n;
 
-    dp = [0] * (n + 1)
-    dp[1] = 1
-    dp[2] = 2
+    int dp[1001];                       // raw array (faster than vector for fixed size)
+    dp[1] = 1;
+    dp[2] = 2;
 
-    for i in range(3, n + 1):
-        dp[i] = dp[i-1] + dp[i-2]     # come from i-1 or i-2
+    for (int i = 3; i <= n; i++)
+        dp[i] = dp[i-1] + dp[i-2];     // come from i-1 or i-2
 
-    return dp[n]
+    return dp[n];
+}
+
+// Space-optimized: only need last 2 values
+int climbStairsOptimized(int n) {
+    if (n <= 2) return n;
+    int prev2 = 1, prev1 = 2;
+    for (int i = 3; i <= n; i++) {
+        int curr = prev1 + prev2;
+        prev2 = prev1;
+        prev1 = curr;
+    }
+    return prev1;
+}
 ```
 
-### 📝 Template — 2D DP (Unique Paths)
+### 📝 STL C++ — 2D DP, Knapsack, LCS
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+using namespace std;
 
-```python
-def unique_paths(m, n):
-    dp = [[1] * n for _ in range(m)]   # base case: edges = 1 path
+// 2D DP — Unique Paths
+int uniquePaths(int m, int n) {
+    vector<vector<int>> dp(m, vector<int>(n, 1)); // edges = 1 path
 
-    for r in range(1, m):
-        for c in range(1, n):
-            dp[r][c] = dp[r-1][c] + dp[r][c-1]
+    for (int r = 1; r < m; r++)
+        for (int c = 1; c < n; c++)
+            dp[r][c] = dp[r-1][c] + dp[r][c-1];
 
-    return dp[m-1][n-1]
-```
+    return dp[m-1][n-1];
+}
 
-### 📝 Template — Knapsack (0/1)
+// 0/1 Knapsack
+int knapsack(vector<int>& weights, vector<int>& values, int capacity) {
+    int n = weights.size();
+    vector<vector<int>> dp(n + 1, vector<int>(capacity + 1, 0));
 
-```python
-def knapsack(weights, values, capacity):
-    n = len(weights)
-    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+    for (int i = 1; i <= n; i++) {
+        for (int w = 0; w <= capacity; w++) {
+            dp[i][w] = dp[i-1][w];         // don't take item i
+            if (weights[i-1] <= w)
+                dp[i][w] = max(dp[i][w],
+                               dp[i-1][w - weights[i-1]] + values[i-1]);
+        }
+    }
+    return dp[n][capacity];
+}
 
-    for i in range(1, n + 1):
-        for w in range(capacity + 1):
-            # don't take item i
-            dp[i][w] = dp[i-1][w]
-            # take item i (if it fits)
-            if weights[i-1] <= w:
-                dp[i][w] = max(dp[i][w], dp[i-1][w - weights[i-1]] + values[i-1])
+// Longest Common Subsequence
+int lcs(string& s1, string& s2) {
+    int m = s1.size(), n = s2.size();
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
-    return dp[n][capacity]
-```
+    for (int i = 1; i <= m; i++)
+        for (int j = 1; j <= n; j++)
+            dp[i][j] = (s1[i-1] == s2[j-1])
+                       ? dp[i-1][j-1] + 1
+                       : max(dp[i-1][j], dp[i][j-1]);
 
-### 📝 Template — LCS / Edit Distance
+    return dp[m][n];
+}
 
-```python
-# Longest Common Subsequence
-def lcs(s1, s2):
-    m, n = len(s1), len(s2)
-    dp = [[0] * (n + 1) for _ in range(m + 1)]
+// Coin Change (minimum coins)
+int coinChange(vector<int>& coins, int amount) {
+    vector<int> dp(amount + 1, amount + 1); // init with "infinity"
+    dp[0] = 0;
 
-    for i in range(1, m + 1):
-        for j in range(1, n + 1):
-            if s1[i-1] == s2[j-1]:
-                dp[i][j] = dp[i-1][j-1] + 1
-            else:
-                dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+    for (int i = 1; i <= amount; i++)
+        for (int coin : coins)
+            if (coin <= i)
+                dp[i] = min(dp[i], dp[i - coin] + 1);
 
-    return dp[m][n]
+    return dp[amount] > amount ? -1 : dp[amount];
+}
 ```
 
 ### 📚 Classic Problems by Category
-
 | Category | Problems |
 |----------|---------|
 | Linear DP | Climbing Stairs, House Robber, Coin Change |
 | Grid DP | Unique Paths, Minimum Path Sum |
-| Knapsack | 0/1 Knapsack, Partition Equal Subset |
+| Knapsack | 0/1 Knapsack, Partition Equal Subset Sum |
 | String DP | LCS, Edit Distance, Palindromic Substrings |
 | Interval DP | Burst Balloons, Matrix Chain Multiplication |
-| Tree DP | House Robber III, Binary Tree Cameras |
 
 ### ⏱️ Complexity
 - **Time:** O(n²) or O(n×m) typically
-- **Space:** O(n) to O(n×m), often reducible to O(n)
+- **Space:** Often reducible from O(n×m) to O(n)
 
 ---
 
 ## 12. Greedy
 
 ### 🔍 What is it?
-
-Make the **locally optimal choice** at each step, trusting that local optima lead to a global optimum. No backtracking.
+Make the locally optimal choice at each step, trusting it leads to global optimum. No backtracking.
 
 ### ✅ When to Use
-- Interval scheduling / activity selection
-- Minimum spanning tree
-- Huffman encoding
-- Jump game, gas station
-- When a greedy "exchange argument" can be proven
+- Interval scheduling
+- Jump game
+- When exchange argument can be proven
+- Minimum spanning tree (Prim's/Kruskal's)
 
-> ⚠️ **Warning:** Greedy doesn't always work. Prove it or test with examples before using it.
+> ⚠️ **Warning:** Greedy doesn't always work. Test on examples before committing.
 
-### 📝 Template — Activity Selection (Interval Scheduling)
+### 📝 Raw C++ — Activity Selection
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-```python
-def max_activities(intervals):
-    # sort by end time — greedy: finish earliest, free up most time
-    intervals.sort(key=lambda x: x[1])
+// Sort by end time, pick non-overlapping activities
+int maxActivities(vector<pair<int,int>>& intervals) {
+    // sort by end time (greedy: finish earliest, free up time)
+    sort(intervals.begin(), intervals.end(),
+         [](const pair<int,int>& a, const pair<int,int>& b) {
+             return a.second < b.second;
+         });
 
-    count = 1
-    last_end = intervals[0][1]
+    int count = 1;
+    int lastEnd = intervals[0].second;
 
-    for start, end in intervals[1:]:
-        if start >= last_end:           # no overlap
-            count += 1
-            last_end = end
-
-    return count
+    for (int i = 1; i < intervals.size(); i++) {
+        if (intervals[i].first >= lastEnd) { // no overlap
+            count++;
+            lastEnd = intervals[i].second;
+        }
+    }
+    return count;
+}
 ```
 
-### 📝 Template — Jump Game
+### 📝 STL C++ — Jump Game & Gas Station
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-def can_jump(nums):
-    max_reach = 0
+// Jump Game — can you reach the last index?
+bool canJump(vector<int>& nums) {
+    int maxReach = 0;
 
-    for i, jump in enumerate(nums):
-        if i > max_reach:
-            return False                # can't reach this position
-        max_reach = max(max_reach, i + jump)
+    for (int i = 0; i < nums.size(); i++) {
+        if (i > maxReach) return false; // can't reach this index
+        maxReach = max(maxReach, i + nums[i]);
+    }
+    return true;
+}
 
-    return True
+// Jump Game II — minimum jumps to reach last index
+int jump(vector<int>& nums) {
+    int jumps = 0, currentEnd = 0, farthest = 0;
+
+    for (int i = 0; i < nums.size() - 1; i++) {
+        farthest = max(farthest, i + nums[i]);
+        if (i == currentEnd) {          // must jump
+            jumps++;
+            currentEnd = farthest;
+        }
+    }
+    return jumps;
+}
+
+// Gas Station — find starting position for circular trip
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
+    int total = 0, tank = 0, start = 0;
+
+    for (int i = 0; i < gas.size(); i++) {
+        int net = gas[i] - cost[i];
+        total += net;
+        tank  += net;
+
+        if (tank < 0) {                 // can't continue from 'start'
+            start = i + 1;              // try next station as start
+            tank  = 0;
+        }
+    }
+    return total >= 0 ? start : -1;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Greedy Choice |
 |---------|---------------|
-| Activity Selection | Sort by end time |
-| Jump Game | Track max reachable index |
+| Activity Selection / Non-overlapping Intervals | Sort by end time |
+| Jump Game I & II | Track max reachable index |
 | Gas Station | Circular greedy |
 | Assign Cookies | Sort both, match greedily |
-| Minimum Number of Arrows | Sort by end, shoot at end |
 | Task Scheduler | Most frequent task first |
 
 ### ⏱️ Complexity
-- **Time:** O(n log n) (usually dominated by sorting)
+- **Time:** O(n log n) — dominated by sorting
 - **Space:** O(1)
 
 ---
@@ -1079,159 +1531,184 @@ def can_jump(nums):
 ## 13. Merge Intervals
 
 ### 🔍 What is it?
-
-Sort intervals by start time, then **merge overlapping** intervals by comparing the end of the last merged interval with the start of the next.
+Sort intervals by start time, then merge overlapping ones by extending the end of the last merged interval.
 
 ### ✅ When to Use
 - Overlapping intervals/ranges
-- Insert an interval, merge, find gaps
+- Insert an interval and merge
 - Meeting rooms, calendar conflicts
-- Employee free time
 
-### 📝 Template — Merge Overlapping Intervals
+### 📝 Raw C++ — Merge Intervals
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-```python
-def merge(intervals):
-    if not intervals:
-        return []
+vector<pair<int,int>> mergeIntervals(vector<pair<int,int>>& intervals) {
+    if (intervals.empty()) return {};
 
-    intervals.sort(key=lambda x: x[0])     # sort by start
-    merged = [intervals[0]]
+    // sort by start time
+    sort(intervals.begin(), intervals.end());
 
-    for start, end in intervals[1:]:
-        last_end = merged[-1][1]
+    vector<pair<int,int>> merged;
+    merged.push_back(intervals[0]);
 
-        if start <= last_end:               # overlap
-            merged[-1][1] = max(last_end, end)  # extend
-        else:
-            merged.append([start, end])     # no overlap, add new
+    for (int i = 1; i < intervals.size(); i++) {
+        int start = intervals[i].first;
+        int end   = intervals[i].second;
 
-    return merged
+        if (start <= merged.back().second)              // overlap
+            merged.back().second = max(merged.back().second, end);
+        else
+            merged.push_back({start, end});
+    }
+    return merged;
+}
 ```
 
-### 📝 Template — Insert Interval
+### 📝 STL C++ — Insert Interval & Meeting Rooms II
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <queue>
+using namespace std;
 
-```python
-def insert(intervals, new_interval):
-    result = []
-    i = 0
-    n = len(intervals)
+// Insert and merge one new interval into sorted list
+vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
+    vector<vector<int>> result;
+    int i = 0, n = intervals.size();
 
-    # add all intervals that end before new starts
-    while i < n and intervals[i][1] < new_interval[0]:
-        result.append(intervals[i])
-        i += 1
+    // add all intervals ending before new starts
+    while (i < n && intervals[i][1] < newInterval[0])
+        result.push_back(intervals[i++]);
 
-    # merge all overlapping intervals
-    while i < n and intervals[i][0] <= new_interval[1]:
-        new_interval[0] = min(new_interval[0], intervals[i][0])
-        new_interval[1] = max(new_interval[1], intervals[i][1])
-        i += 1
+    // merge overlapping
+    while (i < n && intervals[i][0] <= newInterval[1]) {
+        newInterval[0] = min(newInterval[0], intervals[i][0]);
+        newInterval[1] = max(newInterval[1], intervals[i][1]);
+        i++;
+    }
+    result.push_back(newInterval);
 
-    result.append(new_interval)
+    // add remaining
+    while (i < n) result.push_back(intervals[i++]);
 
-    # add remaining
-    while i < n:
-        result.append(intervals[i])
-        i += 1
+    return result;
+}
 
-    return result
+// Meeting Rooms II — minimum rooms needed
+int minMeetingRooms(vector<vector<int>>& intervals) {
+    sort(intervals.begin(), intervals.end());
+    priority_queue<int, vector<int>, greater<int>> minHeap; // min-heap of end times
+
+    for (auto& interval : intervals) {
+        if (!minHeap.empty() && minHeap.top() <= interval[0])
+            minHeap.pop();              // room becomes free
+        minHeap.push(interval[1]);      // assign room (track end time)
+    }
+    return minHeap.size();
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Technique |
 |---------|-----------|
 | Merge Intervals | Sort + merge |
 | Insert Interval | Three phases |
-| Meeting Rooms I | Check for any overlap |
-| Meeting Rooms II | Min-heap for active meetings |
+| Meeting Rooms I | Check any overlap |
+| Meeting Rooms II | Min-heap of end times |
 | Employee Free Time | Merge all, find gaps |
 
 ### ⏱️ Complexity
-- **Time:** O(n log n) for sorting
-- **Space:** O(n)
+- **Time:** O(n log n) | **Space:** O(n)
 
 ---
 
 ## 14. Linked List In-Place Reversal
 
 ### 🔍 What is it?
-
-Reverse a linked list (or part of it) **without extra space** by relinking pointers.
+Reverse a linked list (or part of it) without extra space by relinking pointers in-place.
 
 ### ✅ When to Use
-- Reverse entire or part of a linked list
-- Palindrome check
+- Reverse entire list or sublist
+- Palindrome linked list check
 - Reorder list
 - Reverse every k-group
 
-### 📝 Template — Reverse Entire List
+### 📝 Raw C++ — Reverse Entire List
+```cpp
+#include <iostream>
+using namespace std;
 
-```python
-def reverse_list(head):
-    prev = None
-    curr = head
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x) : val(x), next(nullptr) {}
+};
 
-    while curr:
-        next_node = curr.next           # save next
-        curr.next = prev                # reverse link
-        prev = curr                     # move prev forward
-        curr = next_node                # move curr forward
+ListNode* reverseList(ListNode* head) {
+    ListNode* prev = nullptr;
+    ListNode* curr = head;
 
-    return prev                         # new head
+    while (curr) {
+        ListNode* nextNode = curr->next; // save next
+        curr->next = prev;               // reverse link
+        prev = curr;                     // advance prev
+        curr = nextNode;                 // advance curr
+    }
+    return prev;                         // new head
+}
 ```
 
-### 📝 Template — Reverse a Sublist (position l to r)
+### 📝 STL-style C++ — Reverse Sublist & K-Group
+```cpp
+#include <iostream>
+using namespace std;
 
-```python
-def reverse_between(head, left, right):
-    dummy = ListNode(0)
-    dummy.next = head
-    prev = dummy
+// Reverse sublist from position left to right (1-indexed)
+ListNode* reverseBetween(ListNode* head, int left, int right) {
+    ListNode dummy(0);
+    dummy.next = head;
+    ListNode* prev = &dummy;
 
-    # reach node just before 'left'
-    for _ in range(left - 1):
-        prev = prev.next
+    for (int i = 0; i < left - 1; i++)
+        prev = prev->next;              // reach node before 'left'
 
-    curr = prev.next
+    ListNode* curr = prev->next;
 
-    # reverse from left to right
-    for _ in range(right - left):
-        next_node = curr.next
-        curr.next = next_node.next
-        next_node.next = prev.next
-        prev.next = next_node
+    for (int i = 0; i < right - left; i++) {
+        ListNode* nextNode = curr->next;
+        curr->next = nextNode->next;
+        nextNode->next = prev->next;
+        prev->next = nextNode;
+    }
+    return dummy.next;
+}
 
-    return dummy.next
-```
+// Reverse every K-Group
+ListNode* reverseKGroup(ListNode* head, int k) {
+    // check if k nodes remain
+    ListNode* node = head;
+    int count = 0;
+    while (node && count < k) { node = node->next; count++; }
+    if (count < k) return head;        // less than k nodes, don't reverse
 
-### 📝 Template — Reverse K-Group
-
-```python
-def reverse_k_group(head, k):
-    # check if k nodes remain
-    node, count = head, 0
-    while node and count < k:
-        node = node.next
-        count += 1
-
-    if count < k:
-        return head                     # less than k nodes, don't reverse
-
-    prev, curr = None, head
-    for _ in range(k):
-        next_node = curr.next
-        curr.next = prev
-        prev = curr
-        curr = next_node
-
-    head.next = reverse_k_group(curr, k)  # recurse on rest
-    return prev
+    ListNode* prev = nullptr;
+    ListNode* curr = head;
+    for (int i = 0; i < k; i++) {
+        ListNode* next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+    head->next = reverseKGroup(curr, k); // recurse on remaining
+    return prev;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Technique |
 |---------|-----------|
 | Reverse Linked List | Basic reversal |
@@ -1241,324 +1718,612 @@ def reverse_k_group(head, k):
 | Reorder List | Find mid + reverse + merge |
 
 ### ⏱️ Complexity
-- **Time:** O(n)
-- **Space:** O(1)
+- **Time:** O(n) | **Space:** O(1)
 
 ---
 
 ## 15. Heap / Priority Queue
 
 ### 🔍 What is it?
-
-A **heap** is a complete binary tree that always gives you the minimum (min-heap) or maximum (max-heap) in O(1), with O(log n) insert/delete.
-
-Python's `heapq` is a **min-heap** by default. For max-heap, negate the values.
+A complete binary tree giving O(1) min/max and O(log n) insert/delete. STL `priority_queue` is a **max-heap** by default.
 
 ### ✅ When to Use
 - Kth largest / Kth smallest
-- Merge K sorted lists/arrays
-- Scheduling / task priority
+- Merge K sorted lists
 - Dijkstra's shortest path
 - Sliding window maximum
+- Task scheduling
 
-### 📝 Template — K Largest Elements
+### 📝 Raw C++ — Manual Min-Heap (Array-based)
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-import heapq
+// Manual min-heap using array
+struct MinHeap {
+    vector<int> heap;
 
-def k_largest(nums, k):
-    # min-heap of size k: the minimum in the heap is the kth largest
-    heap = []
-    for num in nums:
-        heapq.heappush(heap, num)
-        if len(heap) > k:
-            heapq.heappop(heap)         # remove smallest
-    return list(heap)                   # top k elements
+    void push(int val) {
+        heap.push_back(val);
+        // sift up
+        int i = heap.size() - 1;
+        while (i > 0) {
+            int parent = (i - 1) / 2;
+            if (heap[parent] > heap[i]) {
+                swap(heap[parent], heap[i]);
+                i = parent;
+            } else break;
+        }
+    }
+
+    void pop() {
+        heap[0] = heap.back();
+        heap.pop_back();
+        // sift down
+        int i = 0, n = heap.size();
+        while (true) {
+            int smallest = i;
+            int l = 2*i+1, r = 2*i+2;
+            if (l < n && heap[l] < heap[smallest]) smallest = l;
+            if (r < n && heap[r] < heap[smallest]) smallest = r;
+            if (smallest == i) break;
+            swap(heap[i], heap[smallest]);
+            i = smallest;
+        }
+    }
+
+    int top() { return heap[0]; }
+    bool empty() { return heap.empty(); }
+    int size() { return heap.size(); }
+};
 ```
 
-### 📝 Template — Merge K Sorted Lists
+### 📝 STL C++ — `priority_queue` Templates
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <unordered_map>
+using namespace std;
 
-```python
-def merge_k_lists(lists):
-    heap = []
-    dummy = ListNode(0)
-    curr = dummy
+// STL max-heap (default)
+priority_queue<int> maxHeap;
 
-    # initialize with head of each list
-    for i, node in enumerate(lists):
-        if node:
-            heapq.heappush(heap, (node.val, i, node))
+// STL min-heap
+priority_queue<int, vector<int>, greater<int>> minHeap;
 
-    while heap:
-        val, i, node = heapq.heappop(heap)
-        curr.next = node
-        curr = curr.next
-        if node.next:
-            heapq.heappush(heap, (node.next.val, i, node.next))
+// Kth Largest Element — min-heap of size k
+int findKthLargest(vector<int>& nums, int k) {
+    priority_queue<int, vector<int>, greater<int>> pq; // min-heap
 
-    return dummy.next
-```
+    for (int num : nums) {
+        pq.push(num);
+        if (pq.size() > k) pq.pop();    // keep only k largest
+    }
+    return pq.top();                    // kth largest = smallest in heap
+}
 
-### 📝 Template — Dijkstra's Algorithm
+// Top K Frequent Elements
+vector<int> topKFrequent(vector<int>& nums, int k) {
+    unordered_map<int, int> freq;
+    for (int n : nums) freq[n]++;
 
-```python
-def dijkstra(graph, start):
-    dist = {node: float('inf') for node in graph}
-    dist[start] = 0
-    heap = [(0, start)]                 # (distance, node)
+    // min-heap of {frequency, value}
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
 
-    while heap:
-        d, node = heapq.heappop(heap)
+    for (auto& [val, cnt] : freq) {
+        pq.push({cnt, val});
+        if (pq.size() > k) pq.pop();
+    }
 
-        if d > dist[node]:
-            continue                    # outdated entry
+    vector<int> result;
+    while (!pq.empty()) {
+        result.push_back(pq.top().second);
+        pq.pop();
+    }
+    return result;
+}
 
-        for neighbor, weight in graph[node]:
-            new_dist = d + weight
-            if new_dist < dist[neighbor]:
-                dist[neighbor] = new_dist
-                heapq.heappush(heap, (new_dist, neighbor))
+// Dijkstra's Algorithm
+vector<int> dijkstra(vector<vector<pair<int,int>>>& adj, int start) {
+    int n = adj.size();
+    vector<int> dist(n, INT_MAX);
+    dist[start] = 0;
 
-    return dist
+    // min-heap: {distance, node}
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
+    pq.push({0, start});
+
+    while (!pq.empty()) {
+        auto [d, node] = pq.top(); pq.pop();
+
+        if (d > dist[node]) continue;   // outdated entry, skip
+
+        for (auto [neighbor, weight] : adj[node]) {
+            int newDist = d + weight;
+            if (newDist < dist[neighbor]) {
+                dist[neighbor] = newDist;
+                pq.push({newDist, neighbor});
+            }
+        }
+    }
+    return dist;
+}
+
+// Find Median from Data Stream — two heaps
+class MedianFinder {
+    priority_queue<int> lo;             // max-heap (lower half)
+    priority_queue<int, vector<int>, greater<int>> hi; // min-heap (upper half)
+public:
+    void addNum(int num) {
+        lo.push(num);
+        hi.push(lo.top()); lo.pop();    // balance: move max of lo to hi
+        if (hi.size() > lo.size()) {    // keep lo size >= hi size
+            lo.push(hi.top()); hi.pop();
+        }
+    }
+    double findMedian() {
+        return lo.size() > hi.size()
+               ? lo.top()
+               : (lo.top() + hi.top()) / 2.0;
+    }
+};
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Heap Type |
 |---------|-----------|
 | Kth Largest Element | Min-heap of size k |
 | Top K Frequent Elements | Min-heap |
 | Merge K Sorted Lists | Min-heap |
-| Find Median from Data Stream | Two heaps (max + min) |
-| Task Scheduler | Max-heap |
+| Find Median from Data Stream | Two heaps |
 | Dijkstra's Shortest Path | Min-heap |
+| Task Scheduler | Max-heap |
 
 ### ⏱️ Complexity
-- **Push/Pop:** O(log n)
-- **Peek min/max:** O(1)
+- **Push/Pop:** O(log n) | **Top:** O(1)
 
 ---
 
 ## 16. Trie
 
 ### 🔍 What is it?
-
-A tree where each node represents a **character**, and paths from root to a marked node spell out a word. Enables O(L) insert and search where L is word length.
+A tree where each node is a character. Paths root-to-marked-node spell out words. O(L) insert and search.
 
 ### ✅ When to Use
-- Auto-complete / search suggestions
-- Word search with prefix
+- Auto-complete / prefix search
+- Word search with prefix matching
 - Longest common prefix
-- Boggle / Word Search II
+- Word Search II (Boggle)
 
-### 📝 Template
+### 📝 Raw C++ — Array-based Trie (Faster for a-z)
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
 
-```python
-class TrieNode:
-    def __init__(self):
-        self.children = {}
-        self.is_end = False
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd;
 
-class Trie:
-    def __init__(self):
-        self.root = TrieNode()
+    TrieNode() : isEnd(false) {
+        for (int i = 0; i < 26; i++)
+            children[i] = nullptr;
+    }
+};
 
-    def insert(self, word):
-        node = self.root
-        for ch in word:
-            if ch not in node.children:
-                node.children[ch] = TrieNode()
-            node = node.children[ch]
-        node.is_end = True
+class TrieRaw {
+    TrieNode* root;
+public:
+    TrieRaw() { root = new TrieNode(); }
 
-    def search(self, word):
-        node = self.root
-        for ch in word:
-            if ch not in node.children:
-                return False
-            node = node.children[ch]
-        return node.is_end
+    void insert(string word) {
+        TrieNode* node = root;
+        for (char c : word) {
+            int idx = c - 'a';
+            if (!node->children[idx])
+                node->children[idx] = new TrieNode();
+            node = node->children[idx];
+        }
+        node->isEnd = true;
+    }
 
-    def starts_with(self, prefix):
-        node = self.root
-        for ch in prefix:
-            if ch not in node.children:
-                return False
-            node = node.children[ch]
-        return True
+    bool search(string word) {
+        TrieNode* node = root;
+        for (char c : word) {
+            int idx = c - 'a';
+            if (!node->children[idx]) return false;
+            node = node->children[idx];
+        }
+        return node->isEnd;
+    }
+
+    bool startsWith(string prefix) {
+        TrieNode* node = root;
+        for (char c : prefix) {
+            int idx = c - 'a';
+            if (!node->children[idx]) return false;
+            node = node->children[idx];
+        }
+        return true;
+    }
+};
+```
+
+### 📝 STL C++ — HashMap-based Trie (Any Characters)
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <string>
+using namespace std;
+
+struct TrieNodeSTL {
+    unordered_map<char, TrieNodeSTL*> children;  // supports any char
+    bool isEnd = false;
+};
+
+class TrieSTL {
+    TrieNodeSTL* root;
+public:
+    TrieSTL() { root = new TrieNodeSTL(); }
+
+    void insert(const string& word) {
+        TrieNodeSTL* node = root;
+        for (char c : word) {
+            if (!node->children.count(c))
+                node->children[c] = new TrieNodeSTL();
+            node = node->children[c];
+        }
+        node->isEnd = true;
+    }
+
+    bool search(const string& word) {
+        TrieNodeSTL* node = root;
+        for (char c : word) {
+            if (!node->children.count(c)) return false;
+            node = node->children[c];
+        }
+        return node->isEnd;
+    }
+
+    bool startsWith(const string& prefix) {
+        TrieNodeSTL* node = root;
+        for (char c : prefix) {
+            if (!node->children.count(c)) return false;
+            node = node->children[c];
+        }
+        return true;
+    }
+};
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Technique |
 |---------|-----------|
 | Implement Trie | Basic implementation |
 | Word Search II | Trie + DFS backtracking |
-| Design Search Autocomplete | Trie + BFS/DFS for completions |
+| Design Search Autocomplete | Trie + BFS/DFS |
 | Replace Words | Trie prefix matching |
 | Longest Word in Dictionary | Trie + BFS |
 
 ### ⏱️ Complexity
-- **Insert/Search:** O(L) — L = word length
-- **Space:** O(alphabet_size × L × N) — N = number of words
+- **Insert/Search:** O(L) | **Space:** O(alphabet × L × N)
 
 ---
 
 ## 17. Union Find (Disjoint Set)
 
 ### 🔍 What is it?
-
-Efficiently tracks which elements are in the same **connected component**. Supports union (merge) and find (which group?) in near O(1) with path compression + union by rank.
+Efficiently tracks connected components. Supports union (merge) and find (which group?) in near O(1) with path compression + union by rank.
 
 ### ✅ When to Use
 - Number of connected components
 - Detect cycle in undirected graph
-- Kruskal's minimum spanning tree
+- Kruskal's MST
 - Accounts merge problem
 
-### 📝 Template
+### 📝 Raw C++ — Manual Union Find
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-class UnionFind:
-    def __init__(self, n):
-        self.parent = list(range(n))    # each node is its own parent
-        self.rank = [0] * n
-        self.components = n
+int parent[100001];
+int rankArr[100001];
 
-    def find(self, x):
-        if self.parent[x] != x:
-            self.parent[x] = self.find(self.parent[x])  # path compression
-        return self.parent[x]
+int find(int x) {
+    if (parent[x] != x)
+        parent[x] = find(parent[x]);   // path compression
+    return parent[x];
+}
 
-    def union(self, x, y):
-        px, py = self.find(x), self.find(y)
-        if px == py:
-            return False                # already connected
+bool unite(int x, int y) {
+    int px = find(x), py = find(y);
+    if (px == py) return false;        // already connected
 
-        # union by rank
-        if self.rank[px] < self.rank[py]:
-            px, py = py, px
-        self.parent[py] = px
-        if self.rank[px] == self.rank[py]:
-            self.rank[px] += 1
+    // union by rank
+    if (rankArr[px] < rankArr[py]) swap(px, py);
+    parent[py] = px;
+    if (rankArr[px] == rankArr[py]) rankArr[px]++;
 
-        self.components -= 1
-        return True
-
-    def connected(self, x, y):
-        return self.find(x) == self.find(y)
+    return true;
+}
 ```
 
-### 📝 Usage — Number of Islands
+### 📝 STL C++ — Class-based Union Find
+```cpp
+#include <iostream>
+#include <vector>
+#include <numeric>
+using namespace std;
 
-```python
-def num_islands_uf(grid):
-    rows, cols = len(grid), len(grid[0])
-    uf = UnionFind(rows * cols)
-    land_count = 0
+class UnionFind {
+    vector<int> parent, rank_;
+public:
+    int components;
 
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == '1':
-                land_count += 1
-                for dr, dc in [(0,1),(1,0)]:
-                    nr, nc = r+dr, c+dc
-                    if 0<=nr<rows and 0<=nc<cols and grid[nr][nc]=='1':
-                        uf.union(r*cols+c, nr*cols+nc)
+    UnionFind(int n) : parent(n), rank_(n, 0), components(n) {
+        iota(parent.begin(), parent.end(), 0); // STL: fill 0,1,2,...,n-1
+    }
 
-    return land_count - (land_count - uf.components)  # simplifies to uf.components among land
+    int find(int x) {
+        if (parent[x] != x)
+            parent[x] = find(parent[x]); // path compression
+        return parent[x];
+    }
+
+    bool unite(int x, int y) {
+        int px = find(x), py = find(y);
+        if (px == py) return false;
+
+        if (rank_[px] < rank_[py]) swap(px, py);
+        parent[py] = px;
+        if (rank_[px] == rank_[py]) rank_[px]++;
+
+        components--;
+        return true;
+    }
+
+    bool connected(int x, int y) {
+        return find(x) == find(y);
+    }
+};
+
+// Usage: Number of Provinces
+int findCircleNum(vector<vector<int>>& isConnected) {
+    int n = isConnected.size();
+    UnionFind uf(n);
+
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (isConnected[i][j])
+                uf.unite(i, j);
+
+    return uf.components;
+}
+
+// Redundant Connection — find the edge that creates a cycle
+vector<int> findRedundantConnection(vector<vector<int>>& edges) {
+    int n = edges.size();
+    UnionFind uf(n + 1);
+
+    for (auto& edge : edges) {
+        if (!uf.unite(edge[0], edge[1]))
+            return edge;               // this edge created a cycle
+    }
+    return {};
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Use |
 |---------|-----|
 | Number of Provinces | Count components |
-| Redundant Connection | Detect cycle (union returns False) |
+| Redundant Connection | Detect cycle |
 | Accounts Merge | Union by common email |
-| Number of Islands | Union adjacent land cells |
-| Kruskal's MST | Sort edges, union greedily |
+| Number of Islands | Union adjacent land |
+| Kruskal's MST | Sort edges + union |
 
 ### ⏱️ Complexity
-- **Find/Union:** O(α(n)) ≈ O(1) amortized (α = inverse Ackermann function)
+- **Find/Union:** O(α(n)) ≈ O(1) amortized
 
 ---
 
 ## 18. Bit Manipulation
 
 ### 🔍 What is it?
-
-Operate directly on binary representations of numbers using bitwise operators. Often the key to O(1) or O(n) solutions for number problems.
+Operate directly on binary representations using bitwise operators. Often gives O(1) or O(n) solutions for number problems.
 
 ### 📝 Bit Operations Reference
-
-```python
-# Common bit tricks
-n & 1           # check if n is odd (last bit)
-n >> 1          # divide by 2
-n << 1          # multiply by 2
-n & (n-1)       # clear lowest set bit  (e.g., 6=110 → 4=100)
-n & (-n)        # isolate lowest set bit (e.g., 6=110 → 2=010)
-n ^ n           # = 0  (XOR with itself)
-n ^ 0           # = n  (XOR with 0)
-~n              # flip all bits
+```cpp
+n & 1           // check if n is odd
+n >> 1          // divide by 2
+n << 1          // multiply by 2
+n & (n - 1)     // clear lowest set bit  (6=110 → 4=100)
+n & (-n)        // isolate lowest set bit (6=110 → 2=010)
+n ^ n           // = 0  (XOR with itself)
+n ^ 0           // = n  (XOR with 0)
+~n              // flip all bits
+__builtin_popcount(n)   // GCC: count set bits (O(1))
+__builtin_ctz(n)        // GCC: count trailing zeros
+__builtin_clz(n)        // GCC: count leading zeros
 ```
 
-### 📝 Classic Templates
+### 📝 Raw C++ — Classic Templates
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
 
-```python
-# Single Number — find the element that appears once (rest appear twice)
-def single_number(nums):
-    result = 0
-    for num in nums:
-        result ^= num               # XOR cancels duplicates
-    return result
+// Single Number — find element appearing once (rest appear twice)
+int singleNumber(vector<int>& nums) {
+    int result = 0;
+    for (int num : nums)
+        result ^= num;                  // XOR cancels duplicates
+    return result;
+}
 
-# Count set bits (Hamming Weight)
-def count_bits(n):
-    count = 0
-    while n:
-        count += n & 1
-        n >>= 1
-    return count
+// Count set bits (Hamming Weight)
+int hammingWeight(uint32_t n) {
+    int count = 0;
+    while (n) {
+        count += n & 1;
+        n >>= 1;
+    }
+    return count;
+}
 
-# Is power of 2?
-def is_power_of_two(n):
-    return n > 0 and (n & (n-1)) == 0
+// Faster: Brian Kernighan's algorithm
+int hammingWeightFast(uint32_t n) {
+    int count = 0;
+    while (n) {
+        n &= (n - 1);                   // clears lowest set bit
+        count++;
+    }
+    return count;
+}
 
-# Reverse bits
-def reverse_bits(n):
-    result = 0
-    for _ in range(32):
-        result = (result << 1) | (n & 1)
-        n >>= 1
-    return result
+// Is power of 2?
+bool isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+
+// Reverse 32 bits
+uint32_t reverseBits(uint32_t n) {
+    uint32_t result = 0;
+    for (int i = 0; i < 32; i++) {
+        result = (result << 1) | (n & 1);
+        n >>= 1;
+    }
+    return result;
+}
+```
+
+### 📝 STL C++ — Bitmask for Subsets
+```cpp
+#include <iostream>
+#include <vector>
+#include <bitset>
+using namespace std;
+
+// Generate all subsets using bitmask
+vector<vector<int>> subsetsWithBitmask(vector<int>& nums) {
+    int n = nums.size();
+    int total = 1 << n;                 // 2^n subsets
+    vector<vector<int>> result;
+
+    for (int mask = 0; mask < total; mask++) {
+        vector<int> subset;
+        for (int i = 0; i < n; i++)
+            if (mask & (1 << i))        // bit i is set
+                subset.push_back(nums[i]);
+        result.push_back(subset);
+    }
+    return result;
+}
+
+// STL bitset for fixed-size bit operations
+bitset<32> b(42);                       // 42 in binary
+cout << b.count() << endl;             // number of set bits
+cout << b.to_string() << endl;         // binary string
+
+// Missing Number — XOR with indices
+int missingNumber(vector<int>& nums) {
+    int result = nums.size();
+    for (int i = 0; i < nums.size(); i++)
+        result ^= i ^ nums[i];
+    return result;
+}
 ```
 
 ### 📚 Classic Problems
-
 | Problem | Trick |
 |---------|-------|
 | Single Number | XOR cancels pairs |
 | Single Number II | Count bits mod 3 |
-| Number of 1 Bits | `n & (n-1)` loop |
+| Number of 1 Bits | `n & (n-1)` loop or `__builtin_popcount` |
 | Reverse Bits | Shift and OR |
 | Missing Number | XOR with indices |
 | Power of Two | `n & (n-1) == 0` |
-| Subsets | Bitmask for all 2ⁿ subsets |
+| Subsets | Bitmask enumeration |
 
 ### ⏱️ Complexity
-- **Time:** O(1) or O(n) — typically very fast
-- **Space:** O(1)
+- **Time:** O(1) or O(n) | **Space:** O(1)
 
 ---
 
-## 19. Pattern Recognition Cheatsheet
+## 19. STL Quick Reference
 
-Use this to quickly identify which pattern a problem belongs to.
+### Containers
+```cpp
+#include <vector>       // dynamic array
+#include <deque>        // double-ended queue
+#include <list>         // doubly linked list
+#include <stack>        // LIFO (uses deque internally)
+#include <queue>        // FIFO (uses deque internally)
+#include <priority_queue> // heap (max-heap by default)
+#include <set>          // sorted unique elements, O(log n)
+#include <unordered_set>// hash set, O(1) avg
+#include <map>          // sorted key-value, O(log n)
+#include <unordered_map>// hash map, O(1) avg
+#include <string>
+```
+
+### Common Patterns with STL
+```cpp
+// Max-heap
+priority_queue<int> maxPQ;
+
+// Min-heap
+priority_queue<int, vector<int>, greater<int>> minPQ;
+
+// Custom comparator (max-heap by frequency)
+auto cmp = [](pair<int,int>& a, pair<int,int>& b) {
+    return a.second < b.second;         // max by second element
+};
+priority_queue<pair<int,int>, vector<pair<int,int>>, decltype(cmp)> pq(cmp);
+
+// Sort with custom comparator
+sort(v.begin(), v.end(), [](int a, int b) { return a > b; }); // descending
+
+// Sort pairs by second element
+sort(intervals.begin(), intervals.end(),
+     [](auto& a, auto& b) { return a.second < b.second; });
+
+// Binary search
+lower_bound(v.begin(), v.end(), target); // first element >= target
+upper_bound(v.begin(), v.end(), target); // first element >  target
+
+// Useful algorithms
+reverse(v.begin(), v.end());
+rotate(v.begin(), v.begin() + k, v.end());
+accumulate(v.begin(), v.end(), 0);       // sum
+*max_element(v.begin(), v.end());
+*min_element(v.begin(), v.end());
+next_permutation(v.begin(), v.end());
+fill(v.begin(), v.end(), 0);
+iota(v.begin(), v.end(), 0);            // fill 0,1,2,...
+count(v.begin(), v.end(), val);
+find(v.begin(), v.end(), val);
+```
+
+### STL Complexity Table
+| Container | Access | Insert | Delete | Search |
+|-----------|--------|--------|--------|--------|
+| `vector` | O(1) | O(1) amort | O(n) | O(n) |
+| `deque` | O(1) | O(1) front/back | O(n) mid | O(n) |
+| `list` | O(n) | O(1) | O(1) | O(n) |
+| `set` / `map` | O(log n) | O(log n) | O(log n) | O(log n) |
+| `unordered_set` / `unordered_map` | O(1) avg | O(1) avg | O(1) avg | O(1) avg |
+| `priority_queue` | O(1) top | O(log n) | O(log n) | — |
+| `stack` / `queue` | O(1) top/front | O(1) | O(1) | — |
+
+---
+
+## 20. Pattern Recognition Cheatsheet
 
 ### 🔍 By Keywords
-
 | Keyword / Clue | Pattern to Try |
 |---------------|---------------|
 | "sorted array" + pair | Two Pointers |
@@ -1566,75 +2331,61 @@ Use this to quickly identify which pattern a problem belongs to.
 | "linked list" + cycle / middle | Fast & Slow Pointers |
 | "sorted" + find target / minimize | Binary Search |
 | "sum of subarray" + multiple queries | Prefix Sum |
-| "count frequency" / "find duplicate" | HashMap |
+| "count frequency" / "find duplicate" | HashMap (`unordered_map`) |
 | "next greater" / "nearest smaller" | Monotonic Stack |
-| "shortest path" / "level by level" | BFS |
+| "shortest path" / "level by level" | BFS (`queue`) |
 | "all paths" / "connected components" | DFS |
 | "all combinations" / "all permutations" | Backtracking |
 | "minimum cost" / "number of ways" | Dynamic Programming |
 | "interval overlap" / "meeting rooms" | Merge Intervals |
-| "kth largest" / "top K" | Heap |
+| "kth largest" / "top K" | Heap (`priority_queue`) |
 | "prefix search" / "autocomplete" | Trie |
 | "connected groups" / "union merge" | Union Find |
 | "XOR" / "appear once" / "bit count" | Bit Manipulation |
 | "locally optimal = globally optimal" | Greedy |
 
-### 🔍 By Data Structure
-
+### 🔍 By Data Structure / Input Type
 | Input Type | Common Patterns |
 |-----------|----------------|
 | Sorted Array | Two Pointers, Binary Search, Sliding Window |
 | Unsorted Array | HashMap, Prefix Sum, Monotonic Stack |
 | Linked List | Fast/Slow, In-Place Reversal |
-| Binary Tree | DFS (recursion), BFS (level order) |
+| Binary Tree | DFS (recursion), BFS (`queue`) |
 | Graph | BFS (shortest), DFS (components), Union Find |
 | String | Sliding Window, HashMap, Trie |
-| Numbers | Bit Manipulation, Math, DP |
+| Numbers | Bit Manipulation, DP |
 | Intervals | Merge Intervals, Heap |
 
 ---
 
-## 20. Complexity Quick Reference
+## 21. Complexity Quick Reference
 
 ### Time Complexity
-
 | Complexity | Name | Example |
 |-----------|------|---------|
-| O(1) | Constant | Array index access, HashMap lookup |
-| O(log n) | Logarithmic | Binary Search |
+| O(1) | Constant | `vector` index, `unordered_map` lookup |
+| O(log n) | Logarithmic | Binary Search, `set`/`map` ops |
 | O(n) | Linear | Single loop, Two Pointers |
-| O(n log n) | Linearithmic | Merge Sort, sorting-based problems |
+| O(n log n) | Linearithmic | `sort()`, heap operations |
 | O(n²) | Quadratic | Nested loops, brute force |
 | O(2ⁿ) | Exponential | Subsets, Backtracking |
 | O(n!) | Factorial | Permutations |
 
-### Space Complexity
-
-| Pattern | Space |
-|---------|-------|
-| Two Pointers | O(1) |
-| Sliding Window | O(k) |
-| HashMap | O(n) |
-| DFS (recursive) | O(h) — tree height |
-| BFS | O(w) — max width of tree/graph |
-| DP (1D) | O(n) or O(1) optimized |
-| DP (2D) | O(n×m) or O(n) optimized |
-
 ### Pattern Complexity Summary
-
-| Pattern | Time | Space |
-|---------|------|-------|
-| Two Pointers | O(n) | O(1) |
-| Sliding Window | O(n) | O(k) |
-| Binary Search | O(log n) | O(1) |
-| Prefix Sum | O(n) build, O(1) query | O(n) |
-| BFS | O(V+E) | O(V) |
-| DFS | O(V+E) | O(V) |
-| Backtracking | O(2ⁿ) or O(n!) | O(n) |
-| DP | O(n²) typical | O(n) to O(n²) |
-| Heap | O(n log k) | O(k) |
-| Trie | O(L) per op | O(N×L) |
-| Union Find | O(α(n)) ≈ O(1) | O(n) |
+| Pattern | Time | Space | STL Used |
+|---------|------|-------|----------|
+| Two Pointers | O(n) | O(1) | — |
+| Sliding Window | O(n) | O(k) | `unordered_map` |
+| Binary Search | O(log n) | O(1) | `lower_bound`, `upper_bound` |
+| Prefix Sum | O(n) build, O(1) query | O(n) | `vector` |
+| BFS | O(V+E) | O(V) | `queue` |
+| DFS | O(V+E) | O(V) | `stack` / recursion |
+| Backtracking | O(2ⁿ) or O(n!) | O(n) | `set`, `vector` |
+| DP | O(n²) typical | O(n)–O(n²) | `vector` |
+| Heap | O(n log k) | O(k) | `priority_queue` |
+| Trie | O(L) per op | O(N×L) | `unordered_map` |
+| Union Find | O(α(n)) ≈ O(1) | O(n) | `vector`, `iota` |
+| Monotonic Stack | O(n) | O(n) | `stack` |
 
 ---
 
@@ -1642,35 +2393,57 @@ Use this to quickly identify which pattern a problem belongs to.
 
 ```
 Step 1: UNDERSTAND
-  → Read carefully. What is the input? What is the output?
-  → What are the constraints? (n size, negative numbers, sorted?)
-  → Work through examples by hand.
+  → What is the input? Output? Edge cases?
+  → What are the constraints? (n size, sorted? negative numbers?)
+  → Trace through examples by hand.
 
 Step 2: IDENTIFY THE PATTERN
   → Use the Pattern Recognition Cheatsheet above.
-  → Think about which data structures naturally fit.
+  → Which data structures naturally fit?
 
 Step 3: PLAN
-  → Write pseudocode or explain the approach out loud.
-  → State the time and space complexity before coding.
+  → Write pseudocode first.
+  → State time and space complexity before coding.
 
-Step 4: CODE
-  → Start with the simplest correct solution.
-  → Handle edge cases: empty input, single element, all same values.
+Step 4: CODE (in C++)
+  → Write the core logic first.
+  → Then add edge case handling.
+  → Prefer STL containers over manual implementations in interviews.
 
 Step 5: TEST
-  → Test with the provided examples.
-  → Test with edge cases.
-  → Trace through the code manually for one example.
+  → Test provided examples.
+  → Test edge cases: empty input, n=1, all same values, INT_MAX.
 
 Step 6: OPTIMIZE
-  → Can you do better? Is there a pattern that gives O(n) instead of O(n²)?
+  → unordered_map over map when order doesn't matter (O(1) vs O(log n))
+  → vector over list (cache friendliness)
+  → Can you reduce O(n²) to O(n log n) with sort + two pointers?
+```
+
+### 💡 C++ Interview Tips
+```cpp
+// Use auto for cleaner code
+for (auto& [key, val] : myMap) { ... }
+
+// Structured bindings (C++17)
+auto [lo, hi] = make_pair(0, n-1);
+
+// Use INT_MAX / INT_MIN carefully — adding to INT_MAX overflows
+int dist = INT_MAX;
+if (dist != INT_MAX) dist += weight;   // safe addition
+
+// Reserve vector size when known — avoids reallocations
+vector<int> result;
+result.reserve(n);
+
+// Use emplace_back instead of push_back for objects
+vec.emplace_back(1, 2);               // constructs in-place
 ```
 
 ---
 
-> 🚀 **Remember:** The goal is pattern recognition. Once you've solved 2-3 problems per pattern, the next one becomes much easier. Practice consistently, not intensely.
+> 🚀 **Remember:** STL mastery = interview advantage. Know your containers, know their complexities, and know which to reach for at first glance.
 
 ---
 
-*Last Updated: 2025 | Covers LeetCode, Codeforces, and interview-level DSA*
+*Last Updated: 2025 | C++17 | Covers LeetCode, Codeforces, and FAANG interviews*
