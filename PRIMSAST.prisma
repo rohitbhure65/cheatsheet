@@ -1,0 +1,1202 @@
+// ============================================================
+// ARENAX ESPORTS TOURNAMENT PLATFORM
+// Production Prisma Schema v3.0
+// PostgreSQL + Prisma ORM
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ────────────────────────────────────────────────
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
+
+enum GameType {
+  PUBG
+  BGMI
+  FREE_FIRE
+  COD
+  VALORANT
+  FORTNITE
+  DOTA_2
+  CS2
+}
+
+enum MatchMode {
+  SOLO
+  DUO
+  SQUAD
+}
+
+enum TournamentStatus {
+  UPCOMING
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  ROOM_CREATED
+  LIVE
+  RESULT_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  JOINED
+  LEFT
+  DISQUALIFIED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum BalanceBucket {
+  MAIN
+  WINNING
+  BONUS
+}
+
+enum WalletLedgerType {
+  DEPOSIT
+  TOURNAMENT_JOIN
+  WINNING
+  BONUS
+  WITHDRAWAL
+  REFUND
+  PENALTY
+  REFERRAL_BONUS
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BanReason {
+  CHEATING
+  FRAUD
+  MULTI_ACCOUNT
+  ABUSE
+  SUSPICIOUS_ACTIVITY
+  OTHER
+}
+
+enum BanType {
+  TEMPORARY
+  PERMANENT
+}
+
+enum NotificationType {
+  TOURNAMENT_START
+  TOURNAMENT_RESULT
+  WALLET_CREDIT
+  WALLET_DEBIT
+  KYC_UPDATE
+  WITHDRAWAL_UPDATE
+  REFERRAL_REWARD
+  SYSTEM
+  BAN
+  TICKET_UPDATE
+  DISPUTE_UPDATE
+  PROMO_APPLIED
+}
+
+enum TeamRole {
+  CAPTAIN
+  MEMBER
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  REWARDED
+  FAILED
+}
+
+enum GameProfileStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+  WEB
+  WINDOWS
+  MACOS
+  LINUX
+  TABLET
+  SMART_TV
+  DESKTOP
+  UNKNOWN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  PAYMENT_ISSUE
+  WITHDRAWAL_ISSUE
+  TOURNAMENT_DISPUTE
+  ACCOUNT_ISSUE
+  KYC_ISSUE
+  TECHNICAL_BUG
+  CHEATING_REPORT
+  REWARD_NOT_RECEIVED
+  GENERAL_INQUIRY
+  OTHER
+}
+
+enum TicketMessageSender {
+  USER
+  SUPPORT
+  SYSTEM
+}
+
+enum RoundStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum DisputeStatus {
+  PENDING
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
+enum DiscountType {
+  FLAT
+  PERCENT
+}
+
+enum BatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ReportReason {
+  CHEATING
+  HACKING
+  ABUSIVE_LANGUAGE
+  INAPPROPRIATE_NAME
+  MULTI_ACCOUNT
+  MATCH_FIXING
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTIONED
+  DISMISSED
+}
+
+enum ConfigDataType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+// ─── BETTER AUTH MODELS ───────────────────────────────────
+
+model Session {
+  id             String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String   @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─── USER & IDENTITY ──────────────────────────────────────
+
+/// Core user entity with geographic data for analytics
+model User {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Better Auth Required Fields
+  name          String
+  email         String  @unique
+  emailVerified Boolean @default(false)
+  image         String?
+
+  // ArenaX specific
+  username         String?       @unique
+  mobileNumber     String?       @unique
+  isMobileVerified Boolean       @default(false)
+  role             Role          @default(USER)
+  accountStatus    AccountStatus @default(ACTIVE)
+  referralCode     String        @unique @default(dbgenerated("upper(substr(replace(gen_random_uuid()::text, '-'::text, ''::text), 1, 8))"))
+  banned           Boolean       @default(false)
+  banReason        String?
+  banExpires       DateTime?
+
+  // Geography — for analytics dashboards
+  country String  @default("India")
+  state   String?
+  city    String?
+
+  // Flags
+  isProfileComplete Boolean   @default(false)
+  lastLoginAt       DateTime?
+  fcmToken          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Better Auth Relations
+  sessions Session[]
+  accounts Account[]
+
+  // ArenaX Relations
+  wallet                 Wallet?
+  gameProfiles           GameProfile[]
+  kycRecord              KYCRecord?
+  transactions           Transaction[]
+  withdrawals            Withdrawal[]
+  withdrawalsReviewed    Withdrawal[]            @relation("WithdrawalReviewer")
+  bankDetails            BankDetail[]
+  tournamentParticipants TournamentParticipant[]
+  leaderboardEntries     Leaderboard[]
+  notifications          Notification[]
+  notificationPrefs      NotificationPreference?
+  teamMemberships        TeamMember[]
+  teamsCreated           Team[]                  @relation("TeamCreator")
+  referralsMade          Referral[]              @relation("ReferrerUser")
+  referralReceived       Referral?               @relation("ReferredUser")
+  deviceLogs             DeviceLog[]
+  bans                   UserBan[]               @relation("BannedUser")
+  bansGiven              UserBan[]               @relation("BanAdmin")
+  adminLogs              AdminLog[]
+  roomAccessLogs         RoomAccessLog[]
+  tournamentsCreated     Tournament[]            @relation("TournamentCreator")
+  roomsCreated           MatchRoom[]             @relation("RoomAdmin")
+  tournamentFollows      TournamentFollower[]
+  disputesRaised         ResultDispute[]         @relation("DisputeUser")
+  disputesReviewed       ResultDispute[]         @relation("DisputeReviewer")
+  reportsGiven           UserReport[]            @relation("Reporter")
+  reportsReceived        UserReport[]            @relation("ReportedUser")
+  reportsReviewed        UserReport[]            @relation("ReportReviewer")
+  configsUpdated         PlatformConfig[]
+
+  ticketsCreated  SupportTicket[] @relation("TicketUser")
+  ticketsAssigned SupportTicket[] @relation("TicketAssignee")
+  ticketMessages  TicketMessage[]
+
+  @@index([email])
+  @@index([username])
+  @@index([referralCode])
+  @@index([state])
+  @@index([city])
+  @@index([accountStatus])
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// Tracks bans: temporary or permanent, with IP and device ban options
+model UserBan {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @db.Uuid
+  bannedById        String    @db.Uuid
+  banType           BanType
+  banReason         BanReason
+  reasonDetails     String?
+  isActive          Boolean   @default(true)
+  bannedAt          DateTime  @default(now())
+  expiresAt         DateTime?
+  unbannedAt        DateTime?
+  ipBan             Boolean   @default(false)
+  deviceBan         Boolean   @default(false)
+  ipAddress         String?
+  deviceFingerprint String?
+  appealText        String?
+  appealReviewedAt  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user     User @relation("BannedUser", fields: [userId], references: [id])
+  bannedBy User @relation("BanAdmin", fields: [bannedById], references: [id])
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([ipAddress])
+  @@index([deviceFingerprint])
+  @@map("user_bans")
+}
+
+// ─── GAME PROFILE ─────────────────────────────────────────
+
+model GameProfile {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String            @db.Uuid
+  gameType   GameType
+  gameUid    String
+  inGameName String
+  metadata   Json?
+  status     GameProfileStatus @default(PENDING)
+  verifiedAt DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user                   User                    @relation(fields: [userId], references: [id])
+  tournamentParticipants TournamentParticipant[]
+
+  @@unique([userId, gameType])
+  @@index([gameType])
+  @@map("game_profiles")
+}
+
+// ─── WALLET & LEDGER ──────────────────────────────────────
+
+/// Single wallet per user — three balance buckets (FREE_MATCH bucket removed v3.0)
+/// WARNING: Always use SELECT FOR UPDATE / serializable transactions when
+/// modifying balances to prevent race conditions on concurrent writes.
+model Wallet {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @unique @db.Uuid
+  mainBalance    Decimal  @default(0) @db.Decimal(12, 2)
+  winningBalance Decimal  @default(0) @db.Decimal(12, 2)
+  bonusBalance   Decimal  @default(0) @db.Decimal(12, 2)
+  totalDeposited Decimal  @default(0) @db.Decimal(12, 2)
+  totalWithdrawn Decimal  @default(0) @db.Decimal(12, 2)
+  totalWon       Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id])
+  ledger WalletLedger[]
+
+  @@map("wallets")
+}
+
+/// Complete financial audit trail — immutable once created
+model WalletLedger {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId      String           @db.Uuid
+  type          WalletLedgerType
+  amount        Decimal          @db.Decimal(12, 2)
+  beforeBalance Decimal          @db.Decimal(12, 2)
+  afterBalance  Decimal          @db.Decimal(12, 2)
+  balanceBucket BalanceBucket
+  referenceId   String?
+  referenceType String?
+  description   String?
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId])
+  @@index([type])
+  @@index([referenceId])
+  @@index([createdAt])
+  @@map("wallet_ledger")
+}
+
+// ─── PAYMENT ──────────────────────────────────────────────
+
+model Transaction {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String        @db.Uuid
+  orderId           String        @unique
+  gatewayTxnId      String?       @unique
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  gateway           String        @default("CCAvenue")
+  gatewayOrderId    String?
+  gatewayResponse   Json?
+  webhookVerified   Boolean       @default(false)
+  webhookReceivedAt DateTime?
+  failureReason     String?
+  refundedAt        DateTime?
+  refundAmount      Decimal?      @db.Decimal(12, 2)
+  promoCodeId       String?       @db.Uuid // NEW: promo applied at deposit
+  discountAmount    Decimal?      @db.Decimal(12, 2) // NEW: discount value applied
+  ipAddress         String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id])
+  promoCode PromoCode?      @relation(fields: [promoCodeId], references: [id])
+  tickets   SupportTicket[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// ─── WITHDRAWAL ───────────────────────────────────────────
+
+model BankDetail {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @db.Uuid
+  accountHolder String
+  accountNumber String
+  ifscCode      String
+  bankName      String
+  upiId         String?
+  isDefault     Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  withdrawals Withdrawal[]
+
+  @@index([userId])
+  @@map("bank_details")
+}
+
+model Withdrawal {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String           @db.Uuid
+  bankDetailId    String?          @db.Uuid
+  amount          Decimal          @db.Decimal(12, 2)
+  status          WithdrawalStatus @default(PENDING)
+  upiId           String?
+  payoutReference String?
+  rejectionReason String?
+  reviewedById    String?          @db.Uuid
+  reviewedAt      DateTime?
+  paidAt          DateTime?
+  batchId         String?          @db.Uuid // NEW: linked to payout batch
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  bankDetail BankDetail? @relation(fields: [bankDetailId], references: [id])
+  reviewedBy User?       @relation("WithdrawalReviewer", fields: [reviewedById], references: [id])
+
+  tickets SupportTicket[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([batchId])
+  @@map("withdrawals")
+}
+
+// ─── TOURNAMENT ───────────────────────────────────────────
+
+/// Main tournament entity — complete match configuration
+/// NOTE: If entryFee = 0, application MUST set paymentStatus = SUCCESS on join.
+///       Do not leave free-entry participants in PENDING payment state.
+model Tournament {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title               String
+  slug                String           @unique
+  description         String?
+  thumbnail           String?
+  bannerImage         String?
+  gameType            GameType
+  matchMode           MatchMode
+  entryFee            Decimal          @default(0) @db.Decimal(10, 2)
+  prizePool           Decimal          @default(0) @db.Decimal(12, 2)
+  perKillReward       Decimal          @default(0) @db.Decimal(8, 2)
+  maxPlayers          Int
+  joinedPlayers       Int              @default(0)
+  totalWinners        Int              @default(1)
+  status              TournamentStatus @default(UPCOMING)
+  isFeatured          Boolean          @default(false)
+  isPublic            Boolean          @default(true)
+  registrationStartAt DateTime?
+  registrationEndAt   DateTime?
+  matchStartAt        DateTime?
+  matchEndAt          DateTime?
+  createdById         String           @db.Uuid
+  rules               String?
+  metadata            Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  createdBy    User                    @relation("TournamentCreator", fields: [createdById], references: [id])
+  participants TournamentParticipant[]
+  teams        Team[]
+  matchRoom    MatchRoom?
+  prizeDistrib PrizeDistribution[]
+  leaderboard  Leaderboard[]
+  rounds       TournamentRound[] // NEW
+  disputes     ResultDispute[] // NEW
+  followers    TournamentFollower[] // NEW
+  tickets      SupportTicket[]
+
+  @@index([gameType])
+  @@index([status])
+  @@index([matchStartAt])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("tournaments")
+}
+
+// ─── TOURNAMENT ROUNDS ────────────────────────────────────
+
+/// Multi-round bracket support (Quarter Final → Semi Final → Final)
+model TournamentRound {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId String      @db.Uuid
+  roundNumber  Int
+  title        String // "Quarter Final", "Semi Final", "Grand Final"
+  status       RoundStatus @default(UPCOMING)
+  startAt      DateTime?
+  endAt        DateTime?
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  tournament Tournament   @relation(fields: [tournamentId], references: [id])
+  matches    RoundMatch[]
+
+  @@unique([tournamentId, roundNumber])
+  @@index([tournamentId])
+  @@index([status])
+  @@map("tournament_rounds")
+}
+
+/// Individual match within a round
+model RoundMatch {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId     String      @db.Uuid
+  matchNumber Int
+  roomId      String?
+  roomPass    String?
+  status      RoundStatus @default(UPCOMING)
+  startAt     DateTime?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  round TournamentRound @relation(fields: [roundId], references: [id])
+
+  @@unique([roundId, matchNumber])
+  @@index([roundId])
+  @@map("round_matches")
+}
+
+// ─── MATCH ROOM ───────────────────────────────────────────
+
+/// Secure room credentials — separate from tournament for security
+model MatchRoom {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId       String    @unique @db.Uuid
+  roomId             String
+  roomPassword       String
+  roomIdEnc          String?
+  roomPassEnc        String?
+  isPublished        Boolean   @default(false)
+  scheduledPublishAt DateTime?
+  publishedAt        DateTime?
+  createdById        String    @db.Uuid
+  broadcastSent      Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tournament Tournament      @relation(fields: [tournamentId], references: [id])
+  createdBy  User            @relation("RoomAdmin", fields: [createdById], references: [id])
+  accessLogs RoomAccessLog[]
+
+  @@index([tournamentId])
+  @@index([isPublished])
+  @@index([scheduledPublishAt])
+  @@map("match_rooms")
+}
+
+/// Every room credential access attempt is logged
+model RoomAccessLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchRoomId   String   @db.Uuid
+  userId        String   @db.Uuid
+  accessGranted Boolean
+  denyReason    String?
+  ipAddress     String?
+  userAgent     String?
+  accessedAt    DateTime @default(now())
+
+  matchRoom MatchRoom @relation(fields: [matchRoomId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([matchRoomId])
+  @@index([userId])
+  @@index([accessGranted])
+  @@index([accessedAt])
+  @@map("room_access_logs")
+}
+
+/// Tournament participant — payment + eligibility + room access tracking
+model TournamentParticipant {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId   String            @db.Uuid
+  userId         String            @db.Uuid
+  gameProfileId  String            @db.Uuid
+  teamId         String?           @db.Uuid
+  status         ParticipantStatus @default(JOINED)
+  /// NOTE: Must be set to SUCCESS immediately at join time if entryFee = 0
+  paymentStatus  PaymentStatus     @default(PENDING)
+  isRoomEligible Boolean           @default(false)
+  roomViewedAt   DateTime?
+  slot           Int?
+  joinedAt       DateTime          @default(now())
+  leftAt         DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  tournament  Tournament   @relation(fields: [tournamentId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  gameProfile GameProfile  @relation(fields: [gameProfileId], references: [id])
+  team        Team?        @relation(fields: [teamId], references: [id])
+  leaderboard Leaderboard?
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
+  @@index([paymentStatus])
+  @@index([isRoomEligible])
+  @@map("tournament_participants")
+}
+
+// ─── LEADERBOARD & PRIZES ─────────────────────────────────
+
+model Leaderboard {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId   String   @db.Uuid
+  userId         String   @db.Uuid
+  participantId  String   @unique @db.Uuid
+  kills          Int      @default(0)
+  placement      Int?
+  positionPoints Decimal  @default(0) @db.Decimal(8, 2)
+  killPoints     Decimal  @default(0) @db.Decimal(8, 2)
+  totalPoints    Decimal  @default(0) @db.Decimal(8, 2)
+  tournamentRank Int?
+  winningAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  isWinner       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tournament  Tournament            @relation(fields: [tournamentId], references: [id])
+  user        User                  @relation(fields: [userId], references: [id])
+  participant TournamentParticipant @relation(fields: [participantId], references: [id])
+
+  @@index([tournamentId, tournamentRank])
+  @@index([tournamentId, totalPoints]) // NEW: for sorting by score
+  @@index([userId])
+  @@index([isWinner])
+  @@map("leaderboard")
+}
+
+model PrizeDistribution {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId String   @db.Uuid
+  rank         Int
+  prizeAmount  Decimal  @db.Decimal(12, 2)
+  // Percentage stored so recalculation is possible if prizePool changes
+  prizePercent Decimal? @db.Decimal(5, 2)
+  description  String?
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([tournamentId, rank])
+  @@index([tournamentId])
+  @@map("prize_distributions")
+}
+
+// ─── RESULT DISPUTE ───────────────────────────────────────
+
+/// Users can challenge posted leaderboard results with evidence
+model ResultDispute {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId   String        @db.Uuid
+  userId         String        @db.Uuid
+  claimedKills   Int?
+  claimedRank    Int?
+  details        String?
+  evidenceUrls   String[] // screenshot/video URLs
+  status         DisputeStatus @default(PENDING)
+  resolvedById   String?       @db.Uuid
+  resolutionNote String?
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  user       User       @relation("DisputeUser", fields: [userId], references: [id])
+  resolvedBy User?      @relation("DisputeReviewer", fields: [resolvedById], references: [id])
+
+  @@index([tournamentId])
+  @@index([userId])
+  @@index([status])
+  @@map("result_disputes")
+}
+
+// ─── TEAM SYSTEM ──────────────────────────────────────────
+
+model Team {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  slug         String    @unique
+  logo         String?
+  description  String?
+  joinCode     String    @unique
+  teamType     MatchMode
+  tournamentId String?   @db.Uuid
+  createdById  String    @db.Uuid
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  createdBy    User                    @relation("TeamCreator", fields: [createdById], references: [id])
+  tournament   Tournament?             @relation(fields: [tournamentId], references: [id])
+  members      TeamMember[]
+  participants TournamentParticipant[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId   String   @db.Uuid
+  userId   String   @db.Uuid
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// ─── REFERRAL SYSTEM ──────────────────────────────────────
+
+/// Referral tracking — reward issued after deposit + paid match
+model Referral {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrerId           String               @db.Uuid
+  referredUserId       String               @unique @db.Uuid
+  depositStatus        Boolean              @default(false)
+  depositedAt          DateTime?
+  paidMatchStatus      Boolean              @default(false)
+  paidMatchAt          DateTime?
+  rewardStatus         ReferralRewardStatus @default(PENDING)
+  rewardedAt           DateTime?
+  ipAtRegistration     String?
+  deviceAtRegistration String?
+  isSuspicious         Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  referrer     User @relation("ReferrerUser", fields: [referrerId], references: [id])
+  referredUser User @relation("ReferredUser", fields: [referredUserId], references: [id])
+
+  @@index([referrerId])
+  @@index([rewardStatus])
+  @@map("referrals")
+}
+
+// ─── PROMO / COUPON SYSTEM ────────────────────────────────
+
+/// Promotional codes for deposit discounts or bonus credits
+model PromoCode {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String       @unique
+  discountType DiscountType
+  value        Decimal      @db.Decimal(10, 2) // flat amount or percent
+  minDeposit   Decimal?     @db.Decimal(10, 2)
+  maxDiscount  Decimal?     @db.Decimal(10, 2) // cap for percent-based
+  maxUses      Int? // null = unlimited
+  usedCount    Int          @default(0)
+  validFrom    DateTime
+  validUntil   DateTime?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  usages       PromoUsage[]
+  transactions Transaction[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("promo_codes")
+}
+
+/// Tracks each promo usage per user — prevents double dipping
+model PromoUsage {
+  id      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  promoId String   @db.Uuid
+  userId  String   @db.Uuid
+  orderId String // transaction reference
+  usedAt  DateTime @default(now())
+
+  promo PromoCode @relation(fields: [promoId], references: [id])
+
+  @@unique([promoId, userId]) // one promo per user
+  @@index([promoId])
+  @@index([userId])
+  @@map("promo_usages")
+}
+
+// ─── TOURNAMENT FOLLOWER ──────────────────────────────────
+
+/// Users who follow/spectate a tournament without participating
+model TournamentFollower {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId String   @db.Uuid
+  userId       String   @db.Uuid
+  followedAt   DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
+  @@map("tournament_followers")
+}
+
+// ─── USER REPORT SYSTEM ───────────────────────────────────
+
+/// In-game abuse / cheating reports between users
+model UserReport {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId   String       @db.Uuid
+  reportedId   String       @db.Uuid
+  tournamentId String?      @db.Uuid
+  reason       ReportReason
+  details      String?
+  evidenceUrls String[]
+  status       ReportStatus @default(PENDING)
+  reviewedById String?      @db.Uuid
+  actionTaken  String? // admin notes on action
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  reporter   User  @relation("Reporter", fields: [reporterId], references: [id])
+  reported   User  @relation("ReportedUser", fields: [reportedId], references: [id])
+  reviewedBy User? @relation("ReportReviewer", fields: [reviewedById], references: [id])
+
+  @@index([reportedId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([tournamentId])
+  @@map("user_reports")
+}
+
+// ─── PLATFORM CONFIG ──────────────────────────────────────
+
+/// Runtime feature flags and platform settings — admin-controlled
+/// Examples: MIN_WITHDRAWAL_AMOUNT, REFERRAL_BONUS_AMOUNT, MAX_TEAM_SIZE
+model PlatformConfig {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String         @unique
+  value       String
+  dataType    ConfigDataType @default(STRING)
+  description String? // human-readable explanation
+  updatedById String         @db.Uuid
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  updatedBy User @relation(fields: [updatedById], references: [id])
+
+  @@index([key])
+  @@map("platform_configs")
+}
+
+// ─── KYC ──────────────────────────────────────────────────
+
+/// IMPORTANT: panNumber and aadhaarNumber must be encrypted at the
+/// application layer before persisting (AES-256 or equivalent).
+/// Storing PAN/Aadhaar in plaintext violates India's IT Act & DPDP Act.
+model KYCRecord {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @unique @db.Uuid
+  fullName        String
+  dateOfBirth     DateTime
+  // Store only application-encrypted ciphertext — never raw values
+  panNumber       String?
+  aadhaarNumber   String?
+  panImageUrl     String?
+  aadhaarImageUrl String?
+  selfieUrl       String?
+  status          KYCStatus @default(PENDING)
+  rejectionReason String?
+  verifiedById    String?   @db.Uuid
+  verifiedAt      DateTime?
+  submittedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@map("kyc_records")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  metadata  Json?
+  deepLink  String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String  @unique @db.Uuid
+  pushEnabled      Boolean @default(true)
+  emailEnabled     Boolean @default(true)
+  smsEnabled       Boolean @default(false)
+  tournamentAlerts Boolean @default(true)
+  walletAlerts     Boolean @default(true)
+  promoAlerts      Boolean @default(false)
+  ticketAlerts     Boolean @default(true)
+  disputeAlerts    Boolean @default(true) // NEW
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notification_preferences")
+}
+
+// ─── FRAUD PREVENTION ─────────────────────────────────────
+
+model DeviceLog {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String         @db.Uuid
+  ipAddress         String
+  deviceFingerprint String?
+  userAgent         String?
+  platform          DevicePlatform @default(UNKNOWN)
+  isSuspicious      Boolean        @default(false)
+  suspicionReason   String?
+  loggedAt          DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([ipAddress])
+  @@index([deviceFingerprint])
+  @@index([isSuspicious])
+  @@map("device_logs")
+}
+
+// ─── ADMIN AUDIT ──────────────────────────────────────────
+
+model AdminLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId    String   @db.Uuid
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("admin_logs")
+}
+
+// ─── SUPPORT TICKET SYSTEM ────────────────────────────────
+
+/// Main support ticket raised by a user
+model SupportTicket {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketNumber    String         @unique // Human-readable: TKT-2024-000001
+  userId          String         @db.Uuid
+  assignedToId    String?        @db.Uuid
+  category        TicketCategory
+  priority        TicketPriority @default(MEDIUM)
+  status          TicketStatus   @default(OPEN)
+  subject         String
+  // Optional: link ticket to a specific tournament or transaction for context
+  tournamentId    String?        @db.Uuid
+  transactionId   String?        @db.Uuid
+  withdrawalId    String?        @db.Uuid
+  // Resolution
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  firstResponseAt DateTime? // SLA tracking
+  // Internal
+  internalNotes   String? // Admin-only notes, never shown to user
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user        User               @relation("TicketUser", fields: [userId], references: [id])
+  assignedTo  User?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  tournament  Tournament?        @relation(fields: [tournamentId], references: [id])
+  transaction Transaction?       @relation(fields: [transactionId], references: [id])
+  withdrawal  Withdrawal?        @relation(fields: [withdrawalId], references: [id])
+  messages    TicketMessage[]
+  attachments TicketAttachment[]
+  statusLogs  TicketStatusLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@index([ticketNumber])
+  @@map("support_tickets")
+}
+
+/// Individual messages within a ticket thread (user + support both post here)
+model TicketMessage {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId   String              @db.Uuid
+  senderId   String              @db.Uuid
+  senderType TicketMessageSender
+  message    String
+  isInternal Boolean             @default(false) // true = only admins can see
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  ticket      SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender      User               @relation(fields: [senderId], references: [id])
+  attachments TicketAttachment[]
+
+  @@index([ticketId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("ticket_messages")
+}
+
+/// File attachments on tickets or messages (screenshots, payment proofs etc.)
+model TicketAttachment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String   @db.Uuid
+  messageId String?  @db.Uuid // optional — can attach at ticket level too
+  fileName  String
+  fileUrl   String
+  fileSize  Int // bytes
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  ticket  SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message TicketMessage? @relation(fields: [messageId], references: [id])
+
+  @@index([ticketId])
+  @@index([messageId])
+  @@map("ticket_attachments")
+}
+
+/// Immutable log of every status transition — for audit and SLA tracking
+model TicketStatusLog {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId    String        @db.Uuid
+  fromStatus  TicketStatus?
+  toStatus    TicketStatus
+  changedById String        @db.Uuid // who made the change
+  reason      String?
+  createdAt   DateTime      @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@map("ticket_status_logs")
+}
