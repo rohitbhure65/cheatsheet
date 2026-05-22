@@ -318,6 +318,17 @@ A **constructor** is a special member function that is **automatically called wh
 - Can be overloaded
 - Called automatically — you don't call it explicitly
 
+## a Implicit Copy Constructor
+
+An **Implicit Copy Constructor** is automatically created by the compiler if the programmer does not define one.
+The compiler-generated copy constructor performs a member-wise copy (shallow copy).
+
+## b Explicit Copy Constructor
+
+An **Explicit Copy Constructor** is a copy constructor written manually by the programmer.
+It provides full control over how copying should happen.
+
+
 ```cpp
 #include <iostream>
 #include <string>
